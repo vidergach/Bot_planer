@@ -5,6 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MessageHandler {
 
     private final ConcurrentHashMap<String, UserTasks> userDataMap = new ConcurrentHashMap<>();
+    private final List<String> tasks = new ArrayList<>();//надо сделать
+    private final List<String> completedTasks = new ArrayList<>();//сделано задач
+
     public String processUserInput(String userInput, String userId) {
         System.out.println("сообщение: " + userInput + " от: " + userId);
 
@@ -15,7 +18,8 @@ public class MessageHandler {
         System.out.println("Ответ: " + outputText);
         return outputText;
     }
-    private String processCommand(String userInput, UserTasks userTasks) {
+    
+    private String Response(String userInput) {
         if ("/start".equals(userInput)) {
             return startMessage();
         } else if ("/help".equals(userInput)) {
@@ -32,6 +36,9 @@ public class MessageHandler {
         }
         else if(userInput.startsWith("/delete")){
             return deleteTask(userInput, userTasks);
+            return markTaskDone(userInput);
+        } else if("/dTask".equals(userInput)) {
+            return donedTasks();
         }
         else {
             return "Неизвестная команда.\n" +
@@ -116,11 +123,6 @@ public class MessageHandler {
                 "/delete - удалить задачу\n"+
                 "/help - помощь\n";
     }
-    /**
-     * Возвращает подробную справку по командам с примерами использования.
-     *
-     * @return справочное сообщение
-     */
     private String helpMessage () {
         return "Справка по работе:\n" +
                 "Я планировщик задач😊 📝\n" +
