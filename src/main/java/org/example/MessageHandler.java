@@ -14,7 +14,7 @@ public class MessageHandler {
         // Получаем данные пользователя
         UserTasks userTasks = userDataMap.computeIfAbsent(userId, k -> new UserTasks());
 
-        String outputText = processCommand(userInput, userTasks);
+        String outputText = Response(userInput, userTasks);
         System.out.println("Ответ: " + outputText);
         return outputText;
     }
@@ -155,3 +155,4 @@ public class MessageHandler {
     }
 
 }
+
