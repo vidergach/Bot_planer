@@ -56,11 +56,11 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-
+        String expected = "Вот список ваших задач:\n" +
+                "  1. Задача 1\n" +
+                "  2. Задача 2\n";
         String result = messageHandler.processUserInput("/tasks", "user123");
-        assertTrue(result.contains("Вот список ваших задач"));
-        assertTrue(result.contains("Задача 1"));
-        assertTrue(result.contains("Задача 2"));
+        assertEquals(expected, result);
     }
 
     /**
@@ -69,10 +69,10 @@ public class MessageHandlerTests {
     @Test
     void testDeleteTask() {
         messageHandler.processUserInput("/add Удаляемая задача", "user123");
+        String expected = "🗑️ Задача \"Удаляемая задача\" удалена из списка задач!";
         String result = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
-        assertTrue(result.contains("🗑️ Задача \"Удаляемая задача\" удалена"));
+        assertEquals(expected, result);
     }
-
     /**
      * Тест отметки задачи как выполненной.
      */
@@ -99,9 +99,9 @@ public class MessageHandlerTests {
     void testShowCompletedTasks() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         messageHandler.processUserInput("/done Полить цветы", "user123");
-
+        String expected = "✅ Вот список выполненных задач:\n" +
+                "  1. Полить цветы ✔\n";
         String result = messageHandler.processUserInput("/dTask", "user123");
-        assertTrue(result.contains("✅ Вот список выполненных задач"));
-        assertTrue(result.contains("Полить цветы"));
+        assertEquals(expected, result);
     }
 }
