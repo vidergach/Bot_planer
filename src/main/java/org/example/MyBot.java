@@ -15,6 +15,31 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
  */
 public class MyBot extends TelegramLongPollingBot {
     private final MessageHandler mainProcessor = new MessageHandler();
+    private final String botUsername;
+    private final String botToken;
+
+    /**
+     * Конструктор бота с параметрами.
+     *
+     * @param botUsername имя бота
+     * @param botToken токен бота
+     */
+    public MyBot(String botUsername, String botToken) {
+        this.botUsername = botUsername;
+        this.botToken = botToken;
+    }
+
+    /**
+     * Конструктор бота с параметрами из переменных окружения.
+     */
+    public MyBot() {
+        String username = System.getenv("BOT_USERNAME");
+        this.botUsername = (username != null && !username.isEmpty()) ? username : "test_my_super_demo_bot";
+
+        String token = System.getenv("BOT_TOKEN");
+        this.botToken = (token != null && !token.isEmpty()) ? token : "";
+    }
+
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -50,11 +75,11 @@ public class MyBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "test_my_super_demo_bot";
+        return botUsername;
     }
 
     @Override
     public String getBotToken() {
-        return System.getenv("BOT_TOKEN");
+        return botToken;
     }
 }

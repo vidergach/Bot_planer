@@ -104,4 +104,35 @@ public class MessageHandlerTests {
         String result = messageHandler.processUserInput("/dTask", "user123");
         assertEquals(expected, result);
     }
+    /**
+     * Тест отметки задачи как выполненной.
+     */
+    @Test
+    void testMarkTaskDone() {
+        messageHandler.processUserInput("/add Полить цветы", "user123");
+        String result = messageHandler.processUserInput("/done Полить цветы", "user123");
+        assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
+    }
+
+    /**
+     * Тест отображения пустого списка выполненных задач.
+     */
+    @Test
+    void testShowEmptyCompletedTasks() {
+        String result = messageHandler.processUserInput("/dTask", "user123");
+        assertEquals("Список выполненных задач пуст!", result);
+    }
+
+    /**
+     * Тест отображения списка выполненных задач.
+     */
+    @Test
+    void testShowCompletedTasks() {
+        messageHandler.processUserInput("/add Полить цветы", "user123");
+        messageHandler.processUserInput("/done Полить цветы", "user123");
+        String expected = "✅ Вот список выполненных задач:\n" +
+                "  1. Полить цветы ✔\n";
+        String result = messageHandler.processUserInput("/dTask", "user123");
+        assertEquals(expected, result);
+    }
 }
