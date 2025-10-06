@@ -4,8 +4,42 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+/**
+ * Telegram бот для управления задачами.
+ * Обрабатывает входящие сообщения и управляет задачами через MessageHandler.
+ * Использует Long Polling для получения обновлений от Telegram API.
+ *
+ * @see TelegramLongPollingBot
+ * @see MessageHandler
+ */
 public class MyBot extends TelegramLongPollingBot {
     private final MessageHandler mainProcessor = new MessageHandler();
+    private final String botUsername;
+    private final String botToken;
+
+    /**
+     * Конструктор бота с параметрами.
+     *
+     * @param botUsername имя бота
+     * @param botToken токен бота
+     */
+    public MyBot(String botUsername, String botToken) {
+        this.botUsername = botUsername;
+        this.botToken = botToken;
+    }
+
+    /**
+     * Конструктор бота с параметрами из переменных окружения.
+     */
+    public MyBot() {
+        String username = System.getenv("BOT_USERNAME");
+        this.botUsername = (username != null && !username.isEmpty()) ? username : "test_my_super_demo_bot";
+
+        String token = System.getenv("BOT_TOKEN");
+        this.botToken = (token != null && !token.isEmpty()) ? token : "";
+    }
+
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -19,6 +53,13 @@ public class MyBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Отправляет текстовое сообщение в указанный чат.
+     * Обрабатывает исключения при отправке.
+     *
+     * @param chatId идентификатор чата для отправки
+     * @param text текст сообщения для отправки
+     */
     private void sendMessage(String chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
@@ -31,12 +72,14 @@ public class MyBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
+
     @Override
     public String getBotUsername() {
-        return "test_my_super_demo_bot";
+        return botUsername;
     }
+
     @Override
     public String getBotToken() {
-        return System.getenv("BOT_TOKEN");
+        return botToken;
     }
 }
