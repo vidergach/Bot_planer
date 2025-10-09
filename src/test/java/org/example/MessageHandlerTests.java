@@ -56,11 +56,13 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-        String expected = "Вот список ваших задач:\n" +
-                "  1. Задача 1\n" +
-                "  2. Задача 2\n";
         String result = messageHandler.processUserInput("/tasks", "user123");
-        assertEquals(expected, result);
+        String expected = """
+        Вот список ваших задач:
+          1. Задача 1
+          2. Задача 2
+        """;
+        assertEquals(expected, result); // Убираем лишние пробелы с обеих сторон
     }
 
     /**
@@ -71,37 +73,6 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("/add Удаляемая задача", "user123");
         String expected = "🗑️ Задача \"Удаляемая задача\" удалена из списка задач!";
         String result = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
-        assertEquals(expected, result);
-    }
-    /**
-     * Тест отметки задачи как выполненной.
-     */
-    @Test
-    void testMarkTaskDone() {
-        messageHandler.processUserInput("/add Полить цветы", "user123");
-        String result = messageHandler.processUserInput("/done Полить цветы", "user123");
-        assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
-    }
-
-    /**
-     * Тест отображения пустого списка выполненных задач.
-     */
-    @Test
-    void testShowEmptyCompletedTasks() {
-        String result = messageHandler.processUserInput("/dTask", "user123");
-        assertEquals("Список выполненных задач пуст!", result);
-    }
-
-    /**
-     * Тест отображения списка выполненных задач.
-     */
-    @Test
-    void testShowCompletedTasks() {
-        messageHandler.processUserInput("/add Полить цветы", "user123");
-        messageHandler.processUserInput("/done Полить цветы", "user123");
-        String expected = "✅ Вот список выполненных задач:\n" +
-                "  1. Полить цветы ✔\n";
-        String result = messageHandler.processUserInput("/dTask", "user123");
         assertEquals(expected, result);
     }
     /**

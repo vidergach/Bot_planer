@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * Умный менеджер данных пользователя.
- * Инкапсулирует логику работы с задачами и обрабатывает все ошибочные ситуации.
+ * Инкапсулирует логику работы с задачами
  *
  * @author Vika
  * @version 1.0
@@ -15,64 +15,63 @@ public class UserData {
     private final List<String> completedTasks = new ArrayList<>();
 
     /**
-     * Возвращает копию списка текущих задач для защиты от изменений.
+     * Возвращает копию списка текущих задач для предотвращения "гонки данных"
+     * Мы не даем доступ к оригиналу, а для каждого пользователя формируем свой
+     * список с помощью копирования
      */
     public List<String> getTasks() {
-        return List.copyOf(tasks);
+        return new ArrayList<>(tasks);
     }
 
     /**
-     * Возвращает копию списка выполненных задач для защиты от изменений.
+     * Возвращает копию списка выполненных задач для предотвращения "гонки данных"
      */
     public List<String> getCompletedTasks() {
-        return List.copyOf(completedTasks);
+        return new ArrayList<>(completedTasks);
     }
 
     /**
      * Добавляет новую задачу.
      *
      * @param task текст задачи
-     * @throws IllegalArgumentException если задача пустая
-     * @throws IllegalStateException если задача уже существует
      */
-    public void addTask(String task) {
+    public String addTask(String task) {
         String trimmedTask = task.trim();
         if (tasks.contains(trimmedTask)) {
-            throw new IllegalStateException("Задача \"" + trimmedTask + "\" уже есть в списке!");
+            return "Задача \"" + trimmedTask + "\" уже есть в списке!";
         }
         tasks.add(trimmedTask);
+        return "Задача \"" + trimmedTask + "\" добавлена!";
     }
 
     /**
      * Отмечает задачу как выполненную.
-     *
      * @param task текст задачи
      * @throws IllegalArgumentException если задача пустая
      * @throws IllegalStateException если задача не найдена
      */
-    public void markTaskDone(String task) {
+    public String markTaskDone(String task) {
         String trimmedTask = task.trim();
         if (!tasks.contains(trimmedTask)) {
-            throw new IllegalStateException("Задача \"" + trimmedTask + "\" не найдена в списке!");
+            return "Задача \"" + trimmedTask + "\" не найдена в списке!";
         }
         tasks.remove(trimmedTask);
         completedTasks.add(trimmedTask);
+        return "Задача \"" + trimmedTask + "\" отмечена выполненной!";
     }
 
     /**
      * Удаляет задачу.
      *
      * @param task текст задачи
-     * @throws IllegalArgumentException если задача пустая
-     * @throws IllegalStateException если задача не найдена
      */
-    public void deleteTask(String task) {
+    public String deleteTask(String task) {
         String trimmedTask = task.trim();
         if (!tasks.contains(trimmedTask)) {
-            throw new IllegalStateException("Задача \"" + trimmedTask + "\" не найдена в списке!");
+            return "Задача \"" + trimmedTask + "\" не найдена в списке!";
         }
-
         tasks.remove(trimmedTask);
+        return "🗑️ Задача \"" + trimmedTask + "\" удалена из списка задач!";
     }
 
     /**
