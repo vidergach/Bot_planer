@@ -141,7 +141,9 @@ public class MessageHandler {
      */
     private String addTask(String parameter, UserData userData) {
         if (parameter.isEmpty()) {
-            return "Упс\uD83D\uDE05, укажите задачу после /add";
+            return """
+                    Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /add
+                    Например: /add Полить цветы""";
         }
         return userData.addTask(parameter);
     }
