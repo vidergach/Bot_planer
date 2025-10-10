@@ -1,8 +1,9 @@
 package org.example;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Assertions.*;
 
 /**
  * Тесты для класса MessageHandler.
@@ -27,7 +28,7 @@ public class MessageHandlerTests {
     @Test
     void testAddTask() {
         String result = messageHandler.processUserInput("/add Полить цветы", "user123");
-        assertEquals("Задача \"Полить цветы\" добавлена!", result);
+        Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", result);
     }
 
     /**
@@ -37,7 +38,7 @@ public class MessageHandlerTests {
     void testAddExistingTask() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         String result = messageHandler.processUserInput("/add Полить цветы", "user123");
-        assertEquals("Задача \"Полить цветы\" уже есть в списке!", result);
+        Assertions.assertEquals("Задача \"Полить цветы\" уже есть в списке!", result);
     }
 
     /**
@@ -46,7 +47,7 @@ public class MessageHandlerTests {
     @Test
     void testShowEmptyTasks() {
         String result = messageHandler.processUserInput("/tasks", "user123");
-        assertEquals("Список задач пуст!", result);
+        Assertions.assertEquals("Список задач пуст!", result);
     }
 
     /**
@@ -56,11 +57,13 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-        String expected = "Вот список ваших задач:\n" +
-                "  1. Задача 1\n" +
-                "  2. Задача 2\n";
         String result = messageHandler.processUserInput("/tasks", "user123");
-        assertEquals(expected, result);
+        String expected = """
+        Вот список ваших задач:
+          1. Задача 1
+          2. Задача 2
+        """;
+        Assertions.assertEquals(expected, result); // Убираем лишние пробелы с обеих сторон
     }
 
     /**
@@ -71,7 +74,7 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("/add Удаляемая задача", "user123");
         String expected = "🗑️ Задача \"Удаляемая задача\" удалена из списка задач!";
         String result = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
-        assertEquals(expected, result);
+        Assertions.assertEquals(expected, result);
     }
     /**
      * Тест отметки задачи как выполненной.
@@ -80,7 +83,7 @@ public class MessageHandlerTests {
     void testMarkTaskDone() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         String result = messageHandler.processUserInput("/done Полить цветы", "user123");
-        assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
+        Assertions.assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
     }
 
     /**
@@ -89,7 +92,7 @@ public class MessageHandlerTests {
     @Test
     void testShowEmptyCompletedTasks() {
         String result = messageHandler.processUserInput("/dTask", "user123");
-        assertEquals("Список выполненных задач пуст!", result);
+        Assertions.assertEquals("Список выполненных задач пуст!", result);
     }
 
     /**
@@ -99,9 +102,11 @@ public class MessageHandlerTests {
     void testShowCompletedTasks() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         messageHandler.processUserInput("/done Полить цветы", "user123");
-        String expected = "✅ Вот список выполненных задач:\n" +
-                "  1. Полить цветы ✔\n";
+        String expected = """
+                ✅ Вот список выполненных задач:
+                  1. Полить цветы ✔
+                """;
         String result = messageHandler.processUserInput("/dTask", "user123");
-        assertEquals(expected, result);
+        Assertions.assertEquals(expected, result);
     }
 }
