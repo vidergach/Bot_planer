@@ -56,11 +56,13 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-        String expected = "Вот список ваших задач:\n" +
-                "  1. Задача 1\n" +
-                "  2. Задача 2\n";
         String result = messageHandler.processUserInput("/tasks", "user123");
-        assertEquals(expected, result);
+        String expected = """
+        Вот список ваших задач:
+          1. Задача 1
+          2. Задача 2
+        """;
+        assertEquals(expected, result); // Убираем лишние пробелы с обеих сторон
     }
 
     /**

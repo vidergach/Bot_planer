@@ -124,7 +124,9 @@ public class MessageHandler {
         } else if ("/delete".equals(command)) {
             return deleteTask(parameter, userData);
         } else {
-            return "Неизвестная команда.\nВведите /help для просмотра доступных команд.";
+            return """
+            Неизвестная команда.
+            Введите /help для просмотра доступных команд.""";
         }
     }
 
@@ -143,12 +145,7 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /add
                     Например: /add Полить цветы""";
         }
-        try {
-            userData.addTask(parameter);
-            return "Задача \"" + parameter + "\" добавлена!";
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return e.getMessage();
-        }
+        return userData.addTask(parameter);
     }
 
     /**
@@ -187,12 +184,7 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /done
                     Например: /done Полить цветы""";
         }
-        try {
-            userData.markTaskDone(parameter);
-            return "Задача \"" + parameter + "\" отмечена выполненной!";
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return e.getMessage();
-        }
+        return userData.markTaskDone(parameter);
     }
 
     /**
@@ -231,12 +223,7 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /delete.
                     Например: /delete Полить цветы""";
         }
-        try {
-            userData.deleteTask(parameter);
-            return "🗑️ Задача \"" + parameter + "\" удалена из списка задач!";
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return e.getMessage();
-        }
+        return userData.deleteTask(parameter);
     }
 
     /**
