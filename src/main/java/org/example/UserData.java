@@ -20,14 +20,14 @@ public class UserData {
      * список с помощью копирования
      */
     public List<String> getTasks() {
-        return new ArrayList<>(tasks);
+        return tasks;
     }
 
     /**
-     * Возвращает копию списка выполненных задач для предотвращения "гонки данных"
+     * Возвращает копию списка выполненных задач для предотвращения случайных изменений
      */
     public List<String> getCompletedTasks() {
-        return new ArrayList<>(completedTasks);
+        return completedTasks;
     }
 
     /**
