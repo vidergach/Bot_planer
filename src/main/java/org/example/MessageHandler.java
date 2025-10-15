@@ -241,11 +241,16 @@ public class MessageHandler {
      */
     public String Import(File file, String userId){
         try{
-            UserData userData = userDataMap.computeIfAbsent(userId, k -> new UserData());
+            UserData userData = userDataMap.get(userId);
+            if (userData == null) {
+                userData = new UserData();
+                userDataMap.put(userId, userData);
+            }
+
             FileWork.FileData result = fileWork.Import(file);
 
-            int newTasks=0;
-            int newCompleted=0;
+            int newTasks = 0;
+            int newCompleted = 0;
 
             for (String task : result.tasks){
                 boolean taskEx = userData.getTasks().contains(task) ||

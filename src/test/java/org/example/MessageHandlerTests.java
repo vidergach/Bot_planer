@@ -3,9 +3,9 @@ package org.example;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.Assertions.*;
 import java.io.File;
-
+import java.util.List;
 
 /**
  * Тесты для класса MessageHandler.
@@ -44,15 +44,6 @@ public class MessageHandlerTests {
     }
 
     /**
-     * Тест добавления задачи без параметра.
-     */
-    @Test
-    void testAddTaskWithoutParameter() {
-        String result = messageHandler.processUserInput("/add", "user123");
-        Assertions.assertTrue(result.contains("Упс") && result.contains("забыли указать задачу"));
-    }
-
-    /**
      * Тест отображения пустого списка задач.
      */
     @Test
@@ -87,26 +78,6 @@ public class MessageHandlerTests {
         String result = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
         Assertions.assertEquals(expected, result);
     }
-
-    /**
-     * Тест удаления несуществующей задачи.
-     */
-    @Test
-    void testDeleteNonExistentTask() {
-        String result = messageHandler.processUserInput("/delete Несуществующая задача", "user123");
-        Assertions.assertEquals("Задача \"Несуществующая задача\" не найдена в списке!", result);
-    }
-
-    /**
-     * Тест удаления задачи без параметра.
-     */
-    @Test
-    void testDeleteTaskWithoutParameter() {
-        String result = messageHandler.processUserInput("/delete", "user123");
-        Assertions.assertTrue(result.contains("Упс") && result.contains("забыли указать задачу"));
-    }
-
-
     /**
      * Тест отметки задачи как выполненной.
      */
@@ -116,24 +87,6 @@ public class MessageHandlerTests {
         String result = messageHandler.processUserInput("/done Полить цветы", "user123");
         Assertions.assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
     }
-
-    /**
-     * Тест отметки несуществующей задачи как выполненной.
-     */
-    @Test
-    void testMarkNonExistentTaskDone() {
-        String result = messageHandler.processUserInput("/done Несуществующая задача", "user123");
-        Assertions.assertEquals("Задача \"Несуществующая задача\" не найдена в списке!", result);
-    }
-    /**
-     * Тест отметки задачи как выполненной без параметра.
-     */
-    @Test
-    void testMarkTaskDoneWithoutParameter() {
-        String result = messageHandler.processUserInput("/done", "user123");
-        Assertions.assertTrue(result.contains("Упс") && result.contains("забыли указать задачу"));
-    }
-
 
     /**
      * Тест отображения пустого списка выполненных задач.

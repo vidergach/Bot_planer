@@ -112,8 +112,8 @@ public class MyBot extends TelegramLongPollingBot {
 
             SendDocument document = new SendDocument();
             document.setChatId(chatId);
-            document.setDocument(new InputFile(exportFile, filename));
-            document.setCaption("Ваш список задач в виде документа " + filename + "\"");
+            document.setDocument(new InputFile(exportFile, exportFile.getName()));
+            document.setCaption("Ваш список задач в виде документа " + exportFile.getName());
 
             execute(document);
             logic.clean(exportFile);
