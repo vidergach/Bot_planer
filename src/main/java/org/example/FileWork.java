@@ -28,9 +28,6 @@ public class FileWork {
      * @throws IOException если произошла ошибка ввода-вывода при создании файла
      */
     public File Export(String userId, List<String> tasks, List<String> completed_tasks, String filename) throws IOException{
-        if (!filename.endsWith(".json")){
-            filename+=".json";
-        }
 
         File file = new File(filename);
 
@@ -118,18 +115,6 @@ public class FileWork {
         return text.replace("\\","\\\\")
                 .replace("\"","\\\"")
                 .replace("\n","\\n");
-    }
-    /**
-     * Восстанавливает специальные символы из JSON.
-     * Преобразует экранированные последовательности обратно в обычные символы.
-     *
-     * @param text экранированная строка из JSON
-     * @return String восстановленная строка с обычными символами
-     */
-    private String unJson(String text){
-        return text.replace("\\\"","\"")
-                .replace("\\\\","\\")
-                .replace("\\n","\n");
     }
     /**
      * Удаляет указанный файл.
