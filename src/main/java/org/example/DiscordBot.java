@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.FileUpload;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
@@ -92,19 +93,22 @@ public class DiscordBot extends ListenerAdapter {
 
         Message.Attachment attachment = message.getAttachments().get(0);
 
-        attachment.getProxy().download().thenAcceptAsync(inputStream -> {
-            File tempFile = null;
-            try {
-                tempFile = File.createTempFile("import", ".json");
-                Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                String result = logic.Import(tempFile, userId);
-                channel.sendMessage(result).queue();
-            } catch (Exception e) {
-                channel.sendMessage("Ошибка импорта: " + e.getMessage()).queue();
-                e.printStackTrace();
-            } finally {
-                if (tempFile != null) {
-                    logic.clean(tempFile);
+        attachment.getProxy().download().thenAccept(new java.util.function.Consumer<InputStream>() {
+            @Override
+            public void accept(InputStream inputStream) {
+                File tempFile = null;
+                try {
+                    tempFile = File.createTempFile("import", ".json");
+                    Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    String result = logic.Import(tempFile, userId);
+                    channel.sendMessage(result).queue();
+                } catch (Exception e) {
+                    channel.sendMessage("Ошибка импорта: " + e.getMessage()).queue();
+                    e.printStackTrace();
+                } finally {
+                    if (tempFile != null) {
+                        logic.clean(tempFile);
+                    }
                 }
             }
         });

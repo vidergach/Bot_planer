@@ -69,20 +69,12 @@ public class MyBot extends TelegramLongPollingBot {
                 sendMessage(chatId, "Напиши имя файла после /export");
                 return;
             }
-            filename=filename.replace("\"", "")
-                    .replace("'", "")
-                    .replace("”", "")
-                    .trim();
-            if (!filename.endsWith(".json")){
-                filename += ".json";
-            }
-
-            File exportFile = mainProcessor.Export(userId, filename);
+            File exportFile = logic.Export(userId, filename);
 
             SendDocument document = new SendDocument();
             document.setChatId(chatId);
-            document.setDocument(new InputFile(exportFile, filename));
-            document.setCaption("Ваш список задач в виде документа " + filename + "\"");
+            document.setDocument(new InputFile(exportFile, exportFile.getName()));
+            document.setCaption("Ваш список задач в виде документа " + exportFile.getName());
 
             execute(document);
             logic.clean(exportFile);
