@@ -73,6 +73,7 @@ public class UserData {
         }
         tasks.remove(trimmedTask);
     }
+
     /**
      * Проверяет, есть ли текущие задачи.
      */

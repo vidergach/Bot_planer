@@ -98,7 +98,7 @@ public class FileWork {
             JsonNode completedNode = save.get("completed_tasks");
             if (completedNode != null) {
                 for (JsonNode taskNode : completedNode) {
-                    completed_tasks.add(taskNode.asText());
+                        completed_tasks.add(taskNode.asText());
                 }
             }
         } catch (IOException e) {
@@ -118,6 +118,18 @@ public class FileWork {
         return text.replace("\\","\\\\")
                 .replace("\"","\\\"")
                 .replace("\n","\\n");
+    }
+    /**
+     * Восстанавливает специальные символы из JSON.
+     * Преобразует экранированные последовательности обратно в обычные символы.
+     *
+     * @param text экранированная строка из JSON
+     * @return String восстановленная строка с обычными символами
+     */
+    private String unJson(String text){
+        return text.replace("\\\"","\"")
+                .replace("\\\\","\\")
+                .replace("\\n","\n");
     }
     /**
      * Удаляет указанный файл.
