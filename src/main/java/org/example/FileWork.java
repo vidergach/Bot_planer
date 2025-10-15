@@ -31,38 +31,39 @@ public class FileWork {
 
         File file = new File(filename);
 
-        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)){
-            StringBuilder jsonBuilder = new StringBuilder();
+        OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+        StringBuilder jsonBuilder = new StringBuilder();
 
-            jsonBuilder.append("{\n");
+        jsonBuilder.append("{\n");
 
-            //текущие
-            jsonBuilder.append("  \"current_tasks\": [\n");
-            for(int i=0; i<tasks.size(); i++){
-                jsonBuilder.append("    \"").append(Json(tasks.get(i))).append("\"");
-                if (i<tasks.size()-1){
-                    jsonBuilder.append(",");
-                }
-                jsonBuilder.append("\n");
+        //текущие
+        jsonBuilder.append("  \"current_tasks\": [\n");
+        for(int i=0; i<tasks.size(); i++){
+            jsonBuilder.append("    \"").append(Json(tasks.get(i))).append("\"");
+            if (i<tasks.size()-1){
+                jsonBuilder.append(",");
             }
-            jsonBuilder.append("  ],\n");
-
-            //выполненные
-            jsonBuilder.append("  \"completed_tasks\": [\n");
-            for(int i=0; i<completed_tasks.size(); i++){
-                jsonBuilder.append("    \"").append(Json(completed_tasks.get(i))).append("\"");
-                if(i<completed_tasks.size()-1){
-                    jsonBuilder.append(",");
-                }
-                jsonBuilder.append("\n");
-            }
-            jsonBuilder.append("  ]\n");
-            jsonBuilder.append("}");
-
-            writer.write(jsonBuilder.toString());
+            jsonBuilder.append("\n");
         }
-        return file;
-    }
+        jsonBuilder.append("  ],\n");
+
+        //выполненные
+        jsonBuilder.append("  \"completed_tasks\": [\n");
+        for(int i=0; i<completed_tasks.size(); i++){
+            jsonBuilder.append("    \"").append(Json(completed_tasks.get(i))).append("\"");
+            if(i<completed_tasks.size()-1){
+                jsonBuilder.append(",");
+            }
+            jsonBuilder.append("\n");
+        }
+        jsonBuilder.append("  ]\n");
+        jsonBuilder.append("}");
+
+        writer.write(jsonBuilder.toString());
+        writer.close();
+
+    return file;
+}
 
     /**
      * Импортирует задачи из JSON файла.
@@ -118,7 +119,6 @@ public class FileWork {
     }
     /**
      * Удаляет указанный файл.
-     * Выполняет безопасное удаление файла с проверкой существования.
      *
      * @param file файл для удаления
      */
@@ -135,6 +135,12 @@ public class FileWork {
         public List<String> tasks;
         public List<String> completed_tasks;
 
+        /**
+         * Создает новый контейнер для импортированных данных.
+         *
+         * @param tasks список текущих задач
+         * @param completed_tasks список выполненных задач
+         */
         public FileData(List<String> tasks, List<String> completed_tasks){
             this.tasks=tasks;
             this.completed_tasks=completed_tasks;

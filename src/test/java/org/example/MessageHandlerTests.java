@@ -189,7 +189,8 @@ public class MessageHandlerTests {
     @Test
     void testImportCommand() {
         String result = messageHandler.processUserInput("/import", "user123");
-        Assertions.assertTrue(result.contains("файл") || result.contains("отправьте"));
+        Assertions.assertEquals("Отправьте JSON файл со списком задач", result);
     }
+
 
 }
