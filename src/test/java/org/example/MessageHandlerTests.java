@@ -112,4 +112,38 @@ public class MessageHandlerTests {
         Assertions.assertEquals(expected, result);
     }
 
+    /**
+     * Тест экспорта файла с задачами.
+     */
+    @Test
+    void testExportWithFilename() {
+
+        Assertions.assertDoesNotThrow(() -> {
+            String result = messageHandler.processUserInput("/export new", "user123");
+        });
+
+        File expectedFile = new File("new.json");
+        if (expectedFile.exists()) {
+            expectedFile.delete();
+        }
+    }
+    /**
+     * Тест экспорта без имени файла.
+     */
+    @Test
+    void testExportWithoutFilename() {
+        String result = messageHandler.processUserInput("/export", "user123");
+        Assertions.assertEquals("Напиши имя файла после /export", result);
+    }
+
+    /**
+     * Тест импорта файла с задачами.
+     */
+    @Test
+    void testImportCommand() {
+        String result = messageHandler.processUserInput("/import", "user123");
+        Assertions.assertEquals("Отправьте JSON файл со списком задач", result);
+    }
+
+
 }
