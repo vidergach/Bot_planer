@@ -13,17 +13,35 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
+/**
+ * Discord бот для управления задачами через Discord.
+ * Обрабатывает команды пользователей и взаимодействует с MessageHandler для логики приложения.
+ * Поддерживает экспорт и импорт задач через файлы.
+ *
+ */
+
 public class DiscordBot extends ListenerAdapter {
     private final String token;
     private final MessageHandler logic;
     private JDA jda;
     private boolean isRunning;
 
+    /**
+     * Создает новый экземпляр Discord бота.
+     *
+     * @param token токен Discord бота для аутентификации
+     * @param logic обработчик сообщений для бизнес-логики приложения
+     */
     public DiscordBot(String token, MessageHandler logic) {
         this.token = token;
         this.logic = logic;
     }
 
+    /**
+     * Запускает Discord бота и инициализирует соединение с Discord API.
+     *
+     * @throws RuntimeException если произошла ошибка при инициализации бота
+     */
     public void start() {
         try {
             jda = JDABuilder.createDefault(token)
@@ -51,6 +69,16 @@ public class DiscordBot extends ListenerAdapter {
         processMessage(message, event.getAuthor().getId(), channel, event.getMessage());
     }
 
+    /**
+     * Обрабатывает сообщение пользователя и формирует ответ.
+     * Поддерживает специальные команды экспорта и импорта, остальные команды
+     * в MessageHandler.
+     *
+     * @param message текст сообщения пользователя
+     * @param userId идентификатор пользователя Discord
+     * @param channel канал для отправки ответа
+     * @param discordMessage оригинальное сообщение Discord (нужно для импорта)
+     */
     private void processMessage(String message, String userId,
                                 GuildMessageChannel channel, Message discordMessage) {
         try {
@@ -68,6 +96,14 @@ public class DiscordBot extends ListenerAdapter {
         }
     }
 
+    /**
+     * Обрабатывает команду экспорта задач в файл.
+     * Создает JSON файл с задачами пользователя и отправляет его в канал.
+     *
+     * @param message полный текст команды с именем файла
+     * @param userId идентификатор пользователя
+     * @param channel канал для отправки файла
+     */
     private void handleExport(String message, String userId, GuildMessageChannel channel) {
         String filename = message.substring("/export".length()).trim();
         if (filename.isEmpty()) {
@@ -84,6 +120,14 @@ public class DiscordBot extends ListenerAdapter {
         }
     }
 
+    /**
+     * Обрабатывает команду импорта задач из файла.
+     * Загружает прикрепленный JSON файл и импортирует задачи пользователя.
+     *
+     * @param message сообщение с прикрепленным файлом
+     * @param userId идентификатор пользователя
+     * @param channel канал для отправки результата импорта
+     */
     private void handleImport(Message message, String userId, GuildMessageChannel channel) {
         if (message.getAttachments().isEmpty()) {
             channel.sendMessage("Прикрепите файл для импорта").queue();

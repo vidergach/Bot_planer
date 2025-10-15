@@ -6,8 +6,15 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 /**
  * Главный класс приложения для запуска Telegram и Discord ботов.
+ * Инициализирует и запускает обоих ботов параллельно.
  */
 public class BotApplication {
+    /**
+     * Основной метод приложения, запускающий Telegram и Discord ботов.
+     * Инициализирует ботов с использованием параметров из переменных окружения
+     * и обрабатывает возможные исключения при запуске.
+     *
+     */
     public static void main(String[] args) {
         try {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
@@ -22,7 +29,7 @@ public class BotApplication {
 
             System.out.println("Telegram бот запущен");
 
-            String discordToken = System.getenv("DISCORD_TOKEN"); // или передайте токен явно
+            String discordToken = System.getenv("DISCORD_TOKEN");
             MessageHandler messageHandler = new MessageHandler();
             DiscordBot discordBot = new DiscordBot(discordToken, messageHandler);
             discordBot.start();
