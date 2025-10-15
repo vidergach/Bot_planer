@@ -35,13 +35,13 @@ public class UserData {
      *
      * @param task текст задачи
      */
-    public String addTask(String task) {
+    public void addTask(String task) {
         String trimmedTask = task.trim();
         if (tasks.contains(trimmedTask)) {
-            return "Задача \"" + trimmedTask + "\" уже есть в списке!";
+            throw new IllegalStateException
+                    ("Задача \"" + trimmedTask + "\" уже есть в списке!");
         }
         tasks.add(trimmedTask);
-        return "Задача \"" + trimmedTask + "\" добавлена!";
     }
 
     /**
@@ -50,14 +50,14 @@ public class UserData {
      * @throws IllegalArgumentException если задача пустая
      * @throws IllegalStateException если задача не найдена
      */
-    public String markTaskDone(String task) {
+    public void markTaskDone(String task) {
         String trimmedTask = task.trim();
         if (!tasks.contains(trimmedTask)) {
-            return "Задача \"" + trimmedTask + "\" не найдена в списке!";
+            throw new IllegalStateException
+                    ("Задача \"" + trimmedTask + "\" не найдена в списке!");
         }
         tasks.remove(trimmedTask);
         completedTasks.add(trimmedTask);
-        return "Задача \"" + trimmedTask + "\" отмечена выполненной!";
     }
 
     /**
@@ -65,15 +65,14 @@ public class UserData {
      *
      * @param task текст задачи
      */
-    public String deleteTask(String task) {
+    public void deleteTask(String task) {
         String trimmedTask = task.trim();
         if (!tasks.contains(trimmedTask)) {
-            return "Задача \"" + trimmedTask + "\" не найдена в списке!";
+            throw new IllegalStateException
+                    ("Задача \"" + trimmedTask + "\" не найдена в списке!");
         }
         tasks.remove(trimmedTask);
-        return "🗑️ Задача \"" + trimmedTask + "\" удалена из списка задач!";
     }
-
     /**
      * Проверяет, есть ли текущие задачи.
      */

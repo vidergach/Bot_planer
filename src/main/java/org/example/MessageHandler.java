@@ -3,6 +3,7 @@ package org.example;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.io.File;
 
 /**
  * Основной обработчик сообщений для Telegram бота планировщика задач.
@@ -16,7 +17,7 @@ import java.util.Map;
  */
 public class MessageHandler {
     private final Map<String, UserData> userDataMap = new ConcurrentHashMap<>();
-
+    private final FileWork fileWork = new FileWork();
     /**
      * Приветственное сообщение, отправляемое пользователю при старте бота.
      * Содержит описание функционала и список доступных команд.
@@ -30,6 +31,8 @@ public class MessageHandler {
             /done - отметить выполненной
             /dTask - список выполненных задач
             /delete - удалить задачу
+            /export - предоставить список задач пользователя в файле
+            /import - загрузить список задач из файла
             /help - помощь""";
     /**
      * Справочное сообщение с подробным описанием работы бота.
@@ -44,6 +47,8 @@ public class MessageHandler {
                 /done - отметить выполненной
                 /dTask - список выполненных задач
                 /delete - удалить задачу
+                /export - предоставить список задач пользователя в файле
+                /import - загрузить список задач из файла
                 /help - помощь
             
                 Например:
@@ -70,6 +75,15 @@ public class MessageHandler {
             
                 /delete Накормить кота
                 - 🗑️ Задача "Накормить кота" удалена из списка задач!
+                
+                /export 'tasks_list.json'
+                - Ваш список задач в виде документа (отправка “tasks_list.json”)
+                
+                /import
+                - Отправьте JSON файл со списком задач
+                - (отправка “tasks_list.json”)
+                - Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask
+            
             """;
 
 
@@ -179,11 +193,97 @@ public class MessageHandler {
             return showCompletedTasks(userData);
         } else if ("/delete".equals(command)) {
             return deleteTask(parameter, userData);
+        } else if ("/export".equals(command)) {
+            if (parameter.isEmpty()) {
+                return "Напиши имя файла после /export";
+            }
+            return "Файл создан)";
+        } else if ("/import".equals(command)) {
+            return "Отправьте JSON файл со списком задач";
         } else {
             return """
                     Неизвестная команда.
                     Введите /help для просмотра доступных команд.""";
         }
+    }
+
+    /**
+     * Экспортирует задачи пользователя в файл.
+     * Создает файл с текущими и завершенными задачами пользователя в указанном формате.
+     *
+     * @param userId идентификатор пользователя, чьи задачи необходимо экспортировать
+     * @param filename имя файла для экспорта
+     * @return File объект созданного файла с экспортированными задачами
+     * @throws Exception если пользователь не найден или у пользователя нет задач
+     */
+    public File Export(String userId, String filename) throws Exception{
+        UserData userData = userDataMap.get(userId);
+        if(userData==null){
+            throw new Exception("Нет задач");
+        }
+        List<String> tasks = userData. getTasks();
+        List<String> completed_tasks = userData.getCompletedTasks();
+
+        if(tasks.isEmpty() && completed_tasks.isEmpty()){
+            throw new Exception("Нет задач");
+        }
+        return fileWork.Export(userId, tasks, completed_tasks, filename);
+    }
+
+    /**
+     * Импортирует задачи пользователя из файла.
+     * Добавляет задачи из файла в существующие списки пользователя, избегая дублирования.
+     * Автоматически помечает задачи как выполненные, если они присутствуют в соответствующем списке.
+     *
+     * @param file файл, содержащий задачи для импорта
+     * @param userId идентификатор пользователя, для которого импортируются задачи
+     * @return String сообщение о результате импорта с количеством добавленных задач
+     */
+    public String Import(File file, String userId){
+        try{
+            UserData userData = userDataMap.computeIfAbsent(userId, k -> new UserData());
+            FileWork.FileData result = fileWork.Import(file);
+
+            int newTasks=0;
+            int newCompleted=0;
+
+            for (String task : result.tasks){
+                boolean taskEx = userData.getTasks().contains(task) ||
+                        userData.getCompletedTasks().contains(task);
+                if(!taskEx){
+                    userData.addTask(task);
+                    newTasks++;
+                }
+            }
+            for (String task : result.completed_tasks){
+                boolean inCurrent = userData.getTasks().contains(task);
+                boolean inCompleted = userData.getCompletedTasks().contains(task);
+
+                if(!inCurrent && !inCompleted){
+                    userData.addTask(task);
+                    userData.markTaskDone(task);
+                    newCompleted++;
+                }
+                else if(inCurrent && inCompleted){
+                    userData.markTaskDone(task);
+                    newCompleted++;
+                }
+            }
+
+            return "Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask";
+        } catch (Exception e){
+            return "Что-то пошло не так, отправьте файл еще раз или проверьте его содержимое";
+        }
+    }
+
+    /**
+     * Удаляет временный файл после использования.
+     * Используется для очистки временных файлов, созданных при экспорте/импорте задач.
+     *
+     * @param file файл для удаления
+     */
+    public void clean(File file){
+        fileWork.Delete(file);
     }
 
     /**
@@ -201,8 +301,14 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /add
                     Например: /add Полить цветы""";
         }
-        return userData.addTask(parameter);
+        try{
+            userData.addTask(parameter);
+            return "Задача \"" + parameter + "\" добавлена!";
+        }catch (IllegalArgumentException|IllegalStateException e){
+            return e.getMessage();
+        }
     }
+
 
     /**
      * Показывает список текущих задач пользователя.
@@ -240,7 +346,12 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /done
                     Например: /done Полить цветы""";
         }
-        return userData.markTaskDone(parameter);
+        try{
+            userData.markTaskDone(parameter);
+            return "Задача \"" + parameter + "\" отмечена выполненной!";
+        }catch (IllegalArgumentException|IllegalStateException e){
+            return e.getMessage();
+        }
     }
 
     /**
@@ -279,6 +390,11 @@ public class MessageHandler {
                     Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /delete.
                     Например: /delete Полить цветы""";
         }
-        return userData.deleteTask(parameter);
+        try{
+            userData.deleteTask(parameter);
+            return "🗑️ Задача \"" + parameter + "\" удалена из списка задач!";
+        }catch (IllegalArgumentException | IllegalStateException e){
+            return e.getMessage();
+        }
     }
 }
