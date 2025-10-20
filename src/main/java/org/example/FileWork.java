@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Класс для работы с файлами задач.
@@ -27,45 +29,21 @@ public class FileWork {
      * @return File объект созданного файла с экспортированными задачами
      * @throws IOException если произошла ошибка ввода-вывода при создании файла
      */
-    public File Export(String userId, List<String> tasks, List<String> completed_tasks, String filename) throws IOException{
-        if (!filename.endsWith(".json")){
-            filename+=".json";
+    public File Export(String userId, List<String> tasks, List<String> completed_tasks, String filename) throws IOException {
+        if (!filename.endsWith(".json")) {
+            filename += ".json";
         }
 
         File file = new File(filename);
 
-        OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
-        StringBuilder jsonBuilder = new StringBuilder();
+        //cтруктура
+        Map<String, Object> exportData = new HashMap<>();
+        exportData.put("current_tasks", tasks != null ? tasks : new ArrayList<String>());
+        exportData.put("completed_tasks", completed_tasks != null ? completed_tasks : new ArrayList<String>());
 
-        jsonBuilder.append("{\n");
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, exportData);
 
-        //текущие
-        jsonBuilder.append("  \"current_tasks\": [\n");
-        for(int i=0; i<tasks.size(); i++){
-            jsonBuilder.append("    \"").append(Json(tasks.get(i))).append("\"");
-            if (i<tasks.size()-1){
-                jsonBuilder.append(",");
-            }
-            jsonBuilder.append("\n");
-        }
-        jsonBuilder.append("  ],\n");
-
-        //выполненные
-        jsonBuilder.append("  \"completed_tasks\": [\n");
-        for(int i=0; i<completed_tasks.size(); i++){
-            jsonBuilder.append("    \"").append(Json(completed_tasks.get(i))).append("\"");
-            if(i<completed_tasks.size()-1){
-                jsonBuilder.append(",");
-            }
-            jsonBuilder.append("\n");
-        }
-        jsonBuilder.append("  ]\n");
-        jsonBuilder.append("}");
-
-        writer.write(jsonBuilder.toString());
-        writer.close();
-
-    return file;
+        return file;
 }
 
     /**
