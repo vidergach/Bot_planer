@@ -113,7 +113,7 @@ public class DiscordBot extends ListenerAdapter {
         }
 
         try {
-            File exportFile = logic.Export(userId, filename);
+            File exportFile = logic.Export_logic(userId, filename);
             channel.sendFiles(FileUpload.fromData(exportFile)).queue();
             logic.clean(exportFile);
         } catch (Exception e) {
@@ -144,7 +144,7 @@ public class DiscordBot extends ListenerAdapter {
                 try {
                     tempFile = File.createTempFile("import", ".json");
                     Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    String result = logic.Import(tempFile, userId);
+                    String result = logic.Import_logic(tempFile, userId);
                     channel.sendMessage(result).queue();
                 } catch (Exception e) {
                     channel.sendMessage("Ошибка импорта: " + e.getMessage()).queue();

@@ -195,7 +195,7 @@ public class MessageHandler {
             return deleteTask(parameter, userData);
         } else if ("/export".equals(command)) {
             if (parameter.isEmpty()) {
-                return "Напиши имя файла после /export";
+                return "Напишите имя файла после /export";
             }
             return "Файл создан)";
         } else if ("/import".equals(command)) {
@@ -216,18 +216,18 @@ public class MessageHandler {
      * @return File объект созданного файла с экспортированными задачами
      * @throws Exception если пользователь не найден или у пользователя нет задач
      */
-    public File Export(String userId, String filename) throws Exception{
+    public File Export_logic(String userId, String filename) throws Exception{
         UserData userData = userDataMap.get(userId);
         if(userData==null){
             throw new Exception("Нет задач");
         }
         List<String> tasks = userData. getTasks();
-        List<String> completed_tasks = userData.getCompletedTasks();
+        List<String> completedTasks = userData.getCompletedTasks();
 
-        if(tasks.isEmpty() && completed_tasks.isEmpty()){
+        if(tasks.isEmpty() && completedTasks.isEmpty()){
             throw new Exception("Нет задач");
         }
-        return fileWork.Export(userId, tasks, completed_tasks, filename);
+        return fileWork.export(userId, tasks, completedTasks, filename);
     }
 
     /**
@@ -239,7 +239,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя, для которого импортируются задачи
      * @return String сообщение о результате импорта с количеством добавленных задач
      */
-    public String Import(File file, String userId){
+    public String Import_logic(File file, String userId){
         try{
             UserData userData = userDataMap.get(userId);
             if (userData == null) {
@@ -247,12 +247,12 @@ public class MessageHandler {
                 userDataMap.put(userId, userData);
             }
 
-            FileWork.FileData result = fileWork.Import(file);
+            FileWork.FileData result = fileWork.importData(file);
 
             int newTasks = 0;
             int newCompleted = 0;
 
-            for (String task : result.tasks){
+            for (String task : result.current_tasks()){
                 boolean taskEx = userData.getTasks().contains(task) ||
                         userData.getCompletedTasks().contains(task);
                 if(!taskEx){
@@ -260,7 +260,7 @@ public class MessageHandler {
                     newTasks++;
                 }
             }
-            for (String task : result.completed_tasks){
+            for (String task : result.completed_tasks()){
                 boolean inCurrent = userData.getTasks().contains(task);
                 boolean inCompleted = userData.getCompletedTasks().contains(task);
 
@@ -288,7 +288,7 @@ public class MessageHandler {
      * @param file файл для удаления
      */
     public void clean(File file){
-        fileWork.Delete(file);
+        fileWork.delete(file);
     }
 
     /**

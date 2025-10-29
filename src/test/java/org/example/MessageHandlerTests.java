@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions.*;
 import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 
 /**
@@ -113,37 +114,63 @@ public class MessageHandlerTests {
     }
 
     /**
-     * Тест экспорта файла с задачами.
-     */
-    @Test
-    void testExportWithFilename() {
-
-        Assertions.assertDoesNotThrow(() -> {
-            String result = messageHandler.processUserInput("/export new", "user123");
-        });
-
-        File expectedFile = new File("new.json");
-        if (expectedFile.exists()) {
-            expectedFile.delete();
-        }
-    }
-    /**
      * Тест экспорта без имени файла.
      */
     @Test
     void testExportWithoutFilename() {
         String result = messageHandler.processUserInput("/export", "user123");
-        Assertions.assertEquals("Напиши имя файла после /export", result);
+        Assertions.assertEquals("Напишите имя файла после /export", result);
+    }
+
+    /**
+     * Тест экспорта файла с задачами.
+     */
+    @Test
+    void exportLogic_WithTasks() throws Exception {
+        MessageHandler messageHandler = new MessageHandler();
+        String userId = "testUserExport";
+
+        messageHandler.processUserInput("/add Задача 1", userId);
+        messageHandler.processUserInput("/add Задача 2", userId);
+        messageHandler.processUserInput("/done Задача 1", userId);
+
+        File exportFile = messageHandler.Export_logic(userId, "test_export.json");
+        Assertions.assertNotNull(exportFile);
+        Assertions.assertTrue(exportFile.exists());
+        Assertions.assertTrue(exportFile.length() > 0);
+        Assertions.assertEquals("test_export.json", exportFile.getName());
+    }
+
+    /**
+     * Тест проверки сообщения запрашивающего файл
+     */
+    @Test
+    void testImportCommand_FileRequest() {
+        String result = messageHandler.processUserInput("/import", "user123");
+        Assertions.assertEquals("Отправьте JSON файл со списком задач", result);
     }
 
     /**
      * Тест импорта файла с задачами.
      */
     @Test
-    void testImportCommand() {
-        String result = messageHandler.processUserInput("/import", "user123");
-        Assertions.assertEquals("Отправьте JSON файл со списком задач", result);
+    void importCommand_WithValidFile() throws Exception {
+        File testFile = File.createTempFile("test_import", ".json");
+        String jsonContent = """
+        {
+            "current_tasks": ["Задача 1", "Задача 2"],
+            "completed_tasks": ["Выполненная задача"]
+        }
+        """;
+        Files.write(testFile.toPath(), jsonContent.getBytes());
+        String result = messageHandler.Import_logic(testFile, "user123");
+        Assertions.assertEquals("Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask", result);
+
+        String tasksList = messageHandler.processUserInput("/tasks", "user123");
+        Assertions.assertTrue(tasksList.contains("Задача 1"));
+        Assertions.assertTrue(tasksList.contains("Задача 2"));
+
+        String completedTasks = messageHandler.processUserInput("/dTask", "user123");
+        Assertions.assertTrue(completedTasks.contains("Выполненная задача"));
     }
-
-
 }
