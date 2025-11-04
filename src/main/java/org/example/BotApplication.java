@@ -29,6 +29,7 @@ public class BotApplication {
             System.out.println("Telegram бот запущен");
 
             DiscordBot discordBot = new DiscordBot(discordToken, messageHandler);
+            discordBot.start();
             System.out.println("Discord бот запущен");
 
         } catch (TelegramApiException e) {

@@ -65,9 +65,20 @@ public class MessageHandler {
         public String getParameter() { return parameter; }
     }
 
+    private static final String WELCOME_MESSAGE = """ 
+            Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
+            
+            ⚠️ Для начала работы необходимо авторизоваться:
+            /registration - зарегистрироваться (для новых пользователей)
+            /integration - войти в существующий аккаунт
+            
+            После авторизации вы сможете использовать все функции планировщика!
+            """;
+
     private static final String START_MESSAGE = """ 
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             Я могу организовывать ваши задачи.
+            
             Команды:
             /add - добавить задачу
             /tasks - показать список задач
@@ -77,9 +88,6 @@ public class MessageHandler {
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
             /help - помощь
-            Синхронизация:
-            /registration - зарегистрироваться
-            /integration - синхронизировать аккаунт
             """;
 
     private static final String HELP_MESSAGE = """ 
@@ -94,8 +102,6 @@ public class MessageHandler {
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
             /help - помощь
-            /registration - зарегистрироваться
-            /integration - синхронизировать аккаунт
             
             Например:
             /add Полить цветы
@@ -138,14 +144,39 @@ public class MessageHandler {
     public BotResponse processUserInput(String userInput, String userId) {
         System.out.println("сообщение: " + userInput + " от: " + userId);
 
-        if (authStates.containsKey(userId)) {
-            return handleAuthStep(userId, userInput);
+        try {
+            if (!isUserAuthenticated(userId)) {
+                if (!authStates.containsKey(userId)) {
+                    CommandParts parts = parseCommand(userInput);
+                    String command = parts.getCommand();
+
+                    if (command.equals("/registration") ||
+                            command.equals("/integration")) {
+                        return processCommand(command, parts.getParameter(), userId, null);
+                    } else {
+                        return new BotResponse(WELCOME_MESSAGE);
+                    }
+                } else {
+                    return handleAuthStep(userId, userInput);
+                }
+            }
+            UserData userData = getUserDataForUserId(userId);
+            CommandParts parts = parseCommand(userInput);
+            String command = parts.getCommand();
+            String parameter = parts.getParameter();
+            return processCommand(command, parameter, userId, userData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Произошла ошибка: " + e.getMessage());
         }
-        UserData userData = getUserDataForUserId(userId);
-        CommandParts parts = parseCommand(userInput);
-        String command = parts.getCommand();
-        String parameter = parts.getParameter();
-        return processCommand(command, parameter, userId, userData);
+    }
+
+    /**
+     * Проверяет, авторизован ли пользователь
+     */
+    private boolean isUserAuthenticated(String userId) {
+        String username = userManager.getUsername(userId);
+        return username != null && !username.trim().isEmpty();
     }
 
     /**
@@ -155,7 +186,6 @@ public class MessageHandler {
         try {
             UserData userData = getUserData(userId);
             FileWork.FileData result = fileWork.importData(inputStream);
-
             int addedTasks = 0;
             int addedCompleted = 0;
             for (String task : result.current_tasks()) {
@@ -176,12 +206,12 @@ public class MessageHandler {
                     }
                 }
             }
-
             return new BotResponse("""
                     Задачи успешно добавлены,
                     можете проверить списки с помощью команд /tasks и /dTask
                     """);
         } catch (Exception e) {
+            e.printStackTrace();
             return new BotResponse("Ошибка при импорте: " + e.getMessage());
         }
     }
@@ -205,22 +235,95 @@ public class MessageHandler {
     }
 
     private BotResponse processCommand(String command, String parameter, String userId, UserData userData) {
-        return switch (command) {
-            case "/start" -> new BotResponse(START_MESSAGE);
-            case "/help" -> new BotResponse(HELP_MESSAGE);
-            case "/add" -> new BotResponse(addTask(parameter, userId));
-            case "/tasks" -> new BotResponse(showTasks(userId));
-            case "/done" -> new BotResponse(markTaskDone(parameter, userId));
-            case "/dTask" -> new BotResponse(showCompletedTasks(userId));
-            case "/delete" -> new BotResponse(deleteTask(parameter, userId));
-            case "/registration" -> new BotResponse(startRegistration(userId));
-            case "/integration" -> new BotResponse(startIntegration(userId));
-            case "/export" -> handleExport(parameter, userId);
-            case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
-            default -> new BotResponse("""
-                    Неизвестная команда.
-                    Введите /help для просмотра доступных команд.""");
-        };
+        try {
+            return switch (command) {
+                case "/start" -> new BotResponse(isUserAuthenticated(userId) ? START_MESSAGE : WELCOME_MESSAGE);
+                case "/help" -> new BotResponse(HELP_MESSAGE);
+                case "/add" -> handleAddTask(parameter, userId);
+                case "/tasks" -> handleShowTasks(userId);
+                case "/done" -> handleMarkTaskDone(parameter, userId);
+                case "/dTask" -> handleShowCompletedTasks(userId);
+                case "/delete" -> handleDeleteTask(parameter, userId);
+                case "/registration" -> handleRegistration(userId);
+                case "/integration" -> handleIntegration(userId);
+                case "/export" -> handleExport(parameter, userId);
+                case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
+                default -> new BotResponse("""
+                        Неизвестная команда.
+                        Введите /help для просмотра доступных команд.""");
+            };
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при выполнении команды: " + e.getMessage());
+        }
+    }
+
+    private BotResponse handleAddTask(String parameter, String userId) {
+        if (parameter.isEmpty()) {
+            return new BotResponse("""
+                    Укажите задачу после /add
+                    Например: /add Купить молоко""");
+        }
+        try {
+            getUserData(userId).addTask(parameter);
+            return new BotResponse("Задача \"" + parameter + "\" добавлена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
+        }
+    }
+
+    private BotResponse handleShowTasks(String userId) {
+        UserData userData = getUserData(userId);
+        if (!userData.hasTasks()) {
+            return new BotResponse("📝 Список задач пуст!");
+        }
+        List<String> tasks = userData.getTasks();
+        StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
+        for (int i = 0; i < tasks.size(); i++) {
+            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
+        }
+        return new BotResponse(sb.toString());
+    }
+
+    private BotResponse handleMarkTaskDone(String parameter, String userId) {
+        if (parameter.isEmpty()) {
+            return new BotResponse("""
+                    Укажите задачу после /done
+                    Например: /done Купить молоко""");
+        }
+        try {
+            getUserData(userId).markTaskDone(parameter);
+            return new BotResponse("✅ Задача \"" + parameter + "\" выполнена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
+        }
+    }
+
+    private BotResponse handleShowCompletedTasks(String userId) {
+        UserData userData = getUserData(userId);
+        if (!userData.hasCompletedTasks()) {
+            return new BotResponse("✅ Список выполненных задач пуст!");
+        }
+        List<String> completedTasks = userData.getCompletedTasks();
+        StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
+        for (int i = 0; i < completedTasks.size(); i++) {
+            sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
+        }
+        return new BotResponse(sb.toString());
+    }
+
+    private BotResponse handleDeleteTask(String parameter, String userId) {
+        if (parameter.isEmpty()) {
+            return new BotResponse("""
+                    Укажите задачу после /delete
+                    Например: /delete Купить молоко""");
+        }
+        try {
+            getUserData(userId).deleteTask(parameter);
+            return new BotResponse("🗑️ Задача \"" + parameter + "\" удалена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
+        }
     }
 
     private BotResponse handleExport(String parameter, String userId) {
@@ -233,8 +336,25 @@ public class MessageHandler {
             return new BotResponse("Ваши задачи экспортированы в файл: "
                     + exportFile.getName(), exportFile, exportFile.getName());
         } catch (Exception e) {
+            e.printStackTrace();
             return new BotResponse("Ошибка экспорта: " + e.getMessage());
         }
+    }
+
+    private BotResponse handleRegistration(String userId) {
+        authStates.put(userId, new AuthState("registration"));
+        return new BotResponse("""
+                📝 Регистрация нового пользователя
+                Введите логин:
+                """);
+    }
+
+    private BotResponse handleIntegration(String userId) {
+        authStates.put(userId, new AuthState("integration"));
+        return new BotResponse("""
+                🔑 Вход в аккаунт
+                Введите логин:
+                """);
     }
 
     private BotResponse handleAuthStep(String userId, String userInput) {
@@ -260,32 +380,42 @@ public class MessageHandler {
             authStates.remove(userId);
             return new BotResponse("""
                     Пользователь с таким логином уже существует.
-                    Используйте другой логин.""");
+                    Используйте другой логин или войдите с помощью /integration.""");
         }
         if ("integration".equals(state.type) && !userManager.isUserRegistered(username)) {
             authStates.remove(userId);
-            return new BotResponse("Пользователь '" + username
-                    + "' не найден. Проверьте логин.");
+            return new BotResponse("""
+                    Пользователь '%s' не найден.
+                    Проверьте логин или зарегистрируйтесь с помощью /registration."""
+                    .formatted(username));
         }
         state.username = username;
         state.step = "password";
-        return new BotResponse("✅ Отлично! Теперь введите пароль:");
+        return new BotResponse("✅Отлично! Теперь введите пароль:");
     }
 
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
         authStates.remove(userId);
-        if ("registration".equals(state.type)) {
-            return handleRegistration(state, password, userId);
-        } else {
-            return handleIntegration(state, password, userId);
+        try {
+            if ("registration".equals(state.type)) {
+                return handleRegistration(state, password, userId);
+            } else {
+                return handleIntegration(state, password, userId);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при авторизации: " + e.getMessage());
         }
     }
 
     private BotResponse handleRegistration(AuthState state, String password, String userId) {
         if (userManager.registerUser(state.username, password)) {
             userManager.authenticateUser(state.username, password, userId);
-            return new BotResponse("Регистрация прошла успешно!");
+            synchronizeUserData(userId, state.username);
+            return new BotResponse("""
+                    ✅ Регистрация прошла успешно!
+                    """);
         }
         return new BotResponse("Ошибка регистрации. Попробуйте снова.");
     }
@@ -294,26 +424,12 @@ public class MessageHandler {
         if (userManager.authenticateUser(state.username, password, userId)) {
             synchronizeUserData(userId, state.username);
             return new BotResponse("""
-                    Интеграция прошла успешно!
-                    Данные синхронизированы.""");
+                    ✅ Вход выполнен успешно!
+                    Данные синхронизированы.
+                    
+                    Добро пожаловать обратно!""");
         }
         return new BotResponse("Неверный пароль. Попробуйте снова.");
-    }
-
-    private String startRegistration(String userId) {
-        authStates.put(userId, new AuthState("registration"));
-        return """
-                Регистрация
-                Введите логин:
-                """;
-    }
-
-    private String startIntegration(String userId) {
-        authStates.put(userId, new AuthState("integration"));
-        return """
-                Интеграция
-                Введите логин:
-                """;
     }
 
     private UserData getUserData(String userId) {
@@ -354,73 +470,5 @@ public class MessageHandler {
         }
 
         userDataMap.remove(oldUserId);
-    }
-
-    private String addTask(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return """
-                    Укажите задачу после /add
-                    Например: /add Купить молоко""";
-        }
-        try {
-            getUserData(userId).addTask(parameter);
-            return "Задача \"" + parameter + "\" добавлена!";
-        } catch (IllegalStateException e) {
-            return e.getMessage();
-        }
-    }
-
-    private String showTasks(String userId) {
-        UserData userData = getUserData(userId);
-        if (!userData.hasTasks()) {
-            return "📝 Список задач пуст!";
-        }
-        List<String> tasks = userData.getTasks();
-        StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
-        for (int i = 0; i < tasks.size(); i++) {
-            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String markTaskDone(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return """
-                    Укажите задачу после /done
-                    Например: /done Купить молоко""";
-        }
-        try {
-            getUserData(userId).markTaskDone(parameter);
-            return "✅ Задача \"" + parameter + "\" выполнена!";
-        } catch (IllegalStateException e) {
-            return e.getMessage();
-        }
-    }
-
-    private String showCompletedTasks(String userId) {
-        UserData userData = getUserData(userId);
-        if (!userData.hasCompletedTasks()) {
-            return "✅ Список выполненных задач пуст!";
-        }
-        List<String> completedTasks = userData.getCompletedTasks();
-        StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
-        for (int i = 0; i < completedTasks.size(); i++) {
-            sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String deleteTask(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return """
-                    Укажите задачу после /delete
-                    Например: /delete Купить молоко""";
-        }
-        try {
-            getUserData(userId).deleteTask(parameter);
-            return "🗑️ Задача \"" + parameter + "\" удалена!";
-        } catch (IllegalStateException e) {
-            return e.getMessage();
-        }
     }
 }
