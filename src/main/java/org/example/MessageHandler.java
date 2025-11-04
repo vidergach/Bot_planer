@@ -364,7 +364,7 @@ public class MessageHandler {
         }
         try {
             getUserData(userId).addTask(parameter);
-            return "✅ Задача \"" + parameter + "\" добавлена!";
+            return "Задача \"" + parameter + "\" добавлена!";
         } catch (IllegalStateException e) {
             return e.getMessage();
         }
