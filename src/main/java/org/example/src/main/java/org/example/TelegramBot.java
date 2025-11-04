@@ -1,0 +1,87 @@
+package org.example;
+import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.io.InputStream;
+
+/**
+ * Telegram бот для управления задачами.
+ */
+public class TelegramBot extends TelegramLongPollingBot {
+    private final MessageHandler logic;
+    private final String botUsername;
+
+    public TelegramBot(String botUsername, String botToken, MessageHandler logic) {
+        super(botToken);
+        this.botUsername = botUsername;
+        this.logic = logic;
+    }
+
+    @Override
+    public void onUpdateReceived(Update update) {
+        if (!update.hasMessage()) return;
+
+        String userId = update.getMessage().getFrom().getId().toString();
+        String chatId = update.getMessage().getChatId().toString();
+
+        try {
+            if (update.getMessage().hasDocument()) {
+                handleImportCommand(chatId, userId, update);
+                return;
+            }
+
+            if (update.getMessage().hasText()) {
+                String text = update.getMessage().getText();
+                MessageHandler.BotResponse response = logic.processUserInput(text, userId);
+
+                if (response.hasFile()) {
+                    SendDocument document = new SendDocument();
+                    document.setChatId(chatId);
+                    document.setDocument(new InputFile(response.getFile(), response.getFileName()));
+                    document.setCaption(response.getMessage());
+                    execute(document);
+                } else {
+                    execute(new SendMessage(chatId, response.getMessage()));
+                }
+            }
+
+        } catch (Exception e) {
+            try {
+                execute(new SendMessage(chatId, "Ошибка: " + e.getMessage()));
+            } catch (TelegramApiException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void handleImportCommand(String chatId, String userId, Update update) {
+        try {
+            String fileId = update.getMessage().getDocument().getFileId();
+            GetFile getFile = new GetFile(fileId);
+            org.telegram.telegrambots.meta.api.objects.File file = execute(getFile);
+
+            java.io.File downloadedFile = downloadFile(file);
+            try (InputStream inputStream = new java.io.FileInputStream(downloadedFile)) {
+                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                execute(new SendMessage(chatId, response.getMessage()));
+            }
+
+        } catch (Exception e) {
+            try {
+                execute(new SendMessage(chatId, "Ошибка импорта: " + e.getMessage()));
+            } catch (TelegramApiException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public String getBotUsername() {
+        return botUsername;
+    }
+}
