@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions.*;
 import java.io.File;
+import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.util.List;
 
@@ -30,8 +31,8 @@ public class MessageHandlerTests {
      */
     @Test
     void testAddTask() {
-        String result = messageHandler.processUserInput("/add Полить цветы", "user123");
-        Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
+        Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", response.getMessage());
     }
 
     /**
@@ -40,8 +41,8 @@ public class MessageHandlerTests {
     @Test
     void testAddExistingTask() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
-        String result = messageHandler.processUserInput("/add Полить цветы", "user123");
-        Assertions.assertEquals("Задача \"Полить цветы\" уже есть в списке!", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
+        Assertions.assertEquals("Задача \"Полить цветы\" уже есть в списке!", response.getMessage());
     }
 
     /**
@@ -49,8 +50,8 @@ public class MessageHandlerTests {
      */
     @Test
     void testShowEmptyTasks() {
-        String result = messageHandler.processUserInput("/tasks", "user123");
-        Assertions.assertEquals("Список задач пуст!", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/tasks", "user123");
+        Assertions.assertEquals("📝 Список задач пуст!", response.getMessage());
     }
 
     /**
@@ -60,13 +61,13 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-        String result = messageHandler.processUserInput("/tasks", "user123");
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/tasks", "user123");
         String expected = """
-        Вот список ваших задач:
-          1. Задача 1
-          2. Задача 2
-        """;
-        Assertions.assertEquals(expected, result); // Убираем лишние пробелы с обеих сторон
+                📝 Ваши задачи:
+                1. Задача 1
+                2. Задача 2
+                """;
+        Assertions.assertEquals(expected, response.getMessage());
     }
 
     /**
@@ -75,18 +76,18 @@ public class MessageHandlerTests {
     @Test
     void testDeleteTask() {
         messageHandler.processUserInput("/add Удаляемая задача", "user123");
-        String expected = "🗑️ Задача \"Удаляемая задача\" удалена из списка задач!";
-        String result = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
-        Assertions.assertEquals(expected, result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
+        Assertions.assertEquals("🗑️ Задача \"Удаляемая задача\" удалена!", response.getMessage());
     }
+
     /**
      * Тест отметки задачи как выполненной.
      */
     @Test
     void testMarkTaskDone() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
-        String result = messageHandler.processUserInput("/done Полить цветы", "user123");
-        Assertions.assertEquals("Задача \"Полить цветы\" отмечена выполненной!", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/done Полить цветы", "user123");
+        Assertions.assertEquals("✅ Задача \"Полить цветы\" выполнена!", response.getMessage());
     }
 
     /**
@@ -94,8 +95,8 @@ public class MessageHandlerTests {
      */
     @Test
     void testShowEmptyCompletedTasks() {
-        String result = messageHandler.processUserInput("/dTask", "user123");
-        Assertions.assertEquals("Список выполненных задач пуст!", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/dTask", "user123");
+        Assertions.assertEquals("✅ Список выполненных задач пуст!", response.getMessage());
     }
 
     /**
@@ -105,21 +106,22 @@ public class MessageHandlerTests {
     void testShowCompletedTasks() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         messageHandler.processUserInput("/done Полить цветы", "user123");
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/dTask", "user123");
         String expected = """
-                ✅ Вот список выполненных задач:
-                  1. Полить цветы ✔
+                ✅ Выполненные задачи:
+                1. Полить цветы
                 """;
-        String result = messageHandler.processUserInput("/dTask", "user123");
-        Assertions.assertEquals(expected, result);
+        Assertions.assertEquals(expected, response.getMessage());
     }
+
 
     /**
      * Тест экспорта без имени файла.
      */
     @Test
     void testExportWithoutFilename() {
-        String result = messageHandler.processUserInput("/export", "user123");
-        Assertions.assertEquals("Напишите имя файла после /export", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/export", "user123");
+        Assertions.assertEquals("Напишите имя файла после /export", response.getMessage());
     }
 
     /**
@@ -134,11 +136,21 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("/add Задача 2", userId);
         messageHandler.processUserInput("/done Задача 1", userId);
 
-        File exportFile = messageHandler.Export_logic(userId, "test_export.json");
+        // Прямая работа с файлами через FileWork
+        FileWork fileWork = new FileWork();
+        UserData userData = new UserData();
+        userData.addTask("Задача 1");
+        userData.addTask("Задача 2");
+        userData.markTaskDone("Задача 1");
+
+        File exportFile = fileWork.export(userId, userData.getTasks(), userData.getCompletedTasks(), "test_export.json");
         Assertions.assertNotNull(exportFile);
         Assertions.assertTrue(exportFile.exists());
         Assertions.assertTrue(exportFile.length() > 0);
         Assertions.assertEquals("test_export.json", exportFile.getName());
+
+        // Очистка
+        fileWork.delete(exportFile);
     }
 
     /**
@@ -146,8 +158,8 @@ public class MessageHandlerTests {
      */
     @Test
     void testImportCommand_FileRequest() {
-        String result = messageHandler.processUserInput("/import", "user123");
-        Assertions.assertEquals("Отправьте JSON файл со списком задач", result);
+        MessageHandler.BotResponse response = messageHandler.processUserInput("/import", "user123");
+        Assertions.assertEquals("Для импорта отправьте JSON файл с задачами", response.getMessage());
     }
 
     /**
@@ -163,14 +175,26 @@ public class MessageHandlerTests {
         }
         """;
         Files.write(testFile.toPath(), jsonContent.getBytes());
-        String result = messageHandler.Import_logic(testFile, "user123");
-        Assertions.assertEquals("Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask", result);
+        try (FileInputStream inputStream = new FileInputStream(testFile)) {
+            MessageHandler.BotResponse response = messageHandler.processImport(inputStream, "user123");
+            Assertions.assertEquals("""
+                    Задачи успешно добавлены,
+                    можете проверить списки с помощью команд /tasks и /dTask
+                    """, response.getMessage());
+        }
+        MessageHandler.BotResponse tasksResponse = messageHandler.processUserInput("/tasks", "user123");
+        String expectedTasks = """
+                📝 Ваши задачи:
+                1. Задача 1
+                2. Задача 2
+                """;
+        Assertions.assertEquals(expectedTasks, tasksResponse.getMessage());
 
-        String tasksList = messageHandler.processUserInput("/tasks", "user123");
-        Assertions.assertTrue(tasksList.contains("Задача 1"));
-        Assertions.assertTrue(tasksList.contains("Задача 2"));
-
-        String completedTasks = messageHandler.processUserInput("/dTask", "user123");
-        Assertions.assertTrue(completedTasks.contains("Выполненная задача"));
+        MessageHandler.BotResponse completedTasksResponse = messageHandler.processUserInput("/dTask", "user123");
+        String expectedCompleted = """
+                ✅ Выполненные задачи:
+                1. Выполненная задача
+                """;
+        Assertions.assertEquals(expectedCompleted, completedTasksResponse.getMessage());
     }
 }
