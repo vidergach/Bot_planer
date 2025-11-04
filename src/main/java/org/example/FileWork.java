@@ -3,7 +3,6 @@ package org.example;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,143 +21,77 @@ public class FileWork {
      *
      * @param userId идентификатор пользователя
      * @param tasks список текущих задач для экспорта
-     * @param completed_tasks список выполненных задач для экспорта
+     * @param completedTasks список выполненных задач для экспорта
      * @param filename имя файла для экспорта
      * @return File объект созданного файла с экспортированными задачами
      * @throws IOException если произошла ошибка ввода-вывода при создании файла
      */
-    public File Export(String userId, List<String> tasks, List<String> completed_tasks, String filename) throws IOException{
-        if (!filename.endsWith(".json")){
-            filename+=".json";
+    public File export(String userId, List<String> tasks, List<String> completedTasks, String filename) throws IOException {
+        if (!filename.endsWith(".json")) {
+            filename += ".json";
         }
 
         File file = new File(filename);
 
-        OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
-        StringBuilder jsonBuilder = new StringBuilder();
+        try {
+            // Сериализация
+            FileData exportData = new FileData(
+                    tasks != null ? tasks : new ArrayList<>(),
+                    completedTasks != null ? completedTasks : new ArrayList<>()
+            );
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, exportData);
 
-        jsonBuilder.append("{\n");
-
-        //текущие
-        jsonBuilder.append("  \"current_tasks\": [\n");
-        for(int i=0; i<tasks.size(); i++){
-            jsonBuilder.append("    \"").append(Json(tasks.get(i))).append("\"");
-            if (i<tasks.size()-1){
-                jsonBuilder.append(",");
-            }
-            jsonBuilder.append("\n");
+            return file;
+        } catch (IOException e) {
+            throw new IOException("Ошибка экспорта задач в файл: " + filename, e);
         }
-        jsonBuilder.append("  ],\n");
-
-        //выполненные
-        jsonBuilder.append("  \"completed_tasks\": [\n");
-        for(int i=0; i<completed_tasks.size(); i++){
-            jsonBuilder.append("    \"").append(Json(completed_tasks.get(i))).append("\"");
-            if(i<completed_tasks.size()-1){
-                jsonBuilder.append(",");
-            }
-            jsonBuilder.append("\n");
-        }
-        jsonBuilder.append("  ]\n");
-        jsonBuilder.append("}");
-
-        writer.write(jsonBuilder.toString());
-        writer.close();
-
-    return file;
-}
+    }
 
     /**
      * Импортирует задачи из JSON файла.
      * Использует библиотеку Jackson для парсинга JSON структуры.
      * Извлекает списки текущих и выполненных задач.
      *
-     * @param file файл в формате JSON для импорта
      * @return FileData объект, содержащий импортированные списки задач
      * @throws IOException если файл не существует, недоступен для чтения или имеет неверный формат
      */
-    public FileData Import(File file) throws IOException {
-        List<String> tasks = new ArrayList<>();
-        List<String> completed_tasks = new ArrayList<>();
-
+    public FileData importData(InputStream inputStream) throws IOException {
         try {
-            JsonNode save = objectMapper.readTree(file);
-            System.out.println("=== СОДЕРЖИМОЕ ФАЙЛА ===");
-            System.out.println(save);
-            System.out.println("=== КОНЕЦ СОДЕРЖИМОГО ===");
-
-            // Получаем текущие задачи
-            JsonNode currentNode = save.get("current_tasks");
-            if (currentNode != null) {
-                for (JsonNode taskNode : currentNode) {
-                    tasks.add(taskNode.asText());
-                }
-            }
-
-            // Получаем выполненные задачи
-            JsonNode completedNode = save.get("completed_tasks");
-            if (completedNode != null) {
-                for (JsonNode taskNode : completedNode) {
-                        completed_tasks.add(taskNode.asText());
-                }
-            }
+            return objectMapper.readValue(inputStream, FileData.class);
         } catch (IOException e) {
-            throw new IOException("Ошибка");
+            throw new IOException("Ошибка при чтении файла: " + e.getMessage(), e);
         }
-        return new FileData(tasks, completed_tasks);
     }
 
-    /**
-     * Экранирует специальные символы для JSON.
-     * Преобразует специальные символы в их экранированные последовательности.
-     *
-     * @param text исходный текст для экранирования
-     * @return String экранированная строка, готовая для вставки в JSON
-     */
-    private String Json(String text){
-        return text.replace("\\","\\\\")
-                .replace("\"","\\\"")
-                .replace("\n","\\n");
-    }
-    /**
-     * Восстанавливает специальные символы из JSON.
-     * Преобразует экранированные последовательности обратно в обычные символы.
-     *
-     * @param text экранированная строка из JSON
-     * @return String восстановленная строка с обычными символами
-     */
-    private String unJson(String text){
-        return text.replace("\\\"","\"")
-                .replace("\\\\","\\")
-                .replace("\\n","\n");
-    }
     /**
      * Удаляет указанный файл.
      *
      * @param file файл для удаления
      */
-    public void Delete(File file){
+    public void delete(File file){
         if(file != null && file.exists()){
             file.delete();
         }
     }
-    /**
-     * Внутренний класс для хранения импортированных данных.
-     * Содержит списки текущих и выполненных задач.
-     */
-    public class FileData{
-        public List<String> tasks;
-        public List<String> completed_tasks;
 
+    /**
+     * Record для хранения данных файла задач.
+     *
+     * @param current_tasks список текущих задач
+     * @param completed_tasks список выполненных задач
+     */
+    public record FileData(
+            List<String> current_tasks,
+            List<String> completed_tasks
+    )
+    {
         /**
-         * Создает новый контейнер для импортированных данных.
-         *
-         * @param tasks список текущих задач
-         * @param completed_tasks список выполненных задач
+         * Конструктор, гарантирует, что поля никогда не будут null.
          */
-        public FileData(List<String> tasks, List<String> completed_tasks){
-            this.tasks=tasks;
-            this.completed_tasks=completed_tasks;
+        public FileData {
+            current_tasks = current_tasks != null ? new ArrayList<>(current_tasks) : new ArrayList<>();
+            completed_tasks = completed_tasks != null ? new ArrayList<>(completed_tasks) : new ArrayList<>();
         }
+
     }
 }

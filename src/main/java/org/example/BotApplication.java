@@ -12,7 +12,6 @@ public class BotApplication {
     /**
      * Основной метод приложения, запускающий Telegram и Discord ботов.
      * Инициализирует ботов с использованием параметров из переменных окружения
-     * и обрабатывает возможные исключения при запуске.
      *
      */
     public static void main(String[] args) {
@@ -21,16 +20,14 @@ public class BotApplication {
 
             String telegramBotName = System.getenv("BOT_USERNAME");
             String telegramBotToken = System.getenv("BOT_TOKEN");
-            MessageHandler logic = new MessageHandler();
+            String discordToken = System.getenv("DISCORD_TOKEN");
 
-            MyBot bot = new MyBot(telegramBotName, telegramBotToken, logic);
+            MessageHandler messageHandler = new MessageHandler();
+
+            TelegramBot bot = new TelegramBot(telegramBotName, telegramBotToken, messageHandler);
             botsApi.registerBot(bot);
-            bot.start();
-
             System.out.println("Telegram бот запущен");
 
-            String discordToken = System.getenv("DISCORD_TOKEN");
-            MessageHandler messageHandler = new MessageHandler();
             DiscordBot discordBot = new DiscordBot(discordToken, messageHandler);
             discordBot.start();
             System.out.println("Discord бот запущен");
