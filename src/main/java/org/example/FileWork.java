@@ -45,25 +45,19 @@ public class FileWork {
         } catch (IOException e) {
             throw new IOException("Ошибка экспорта задач в файл: " + filename, e);
         }
-}
+    }
 
     /**
      * Импортирует задачи из JSON файла.
      * Использует библиотеку Jackson для парсинга JSON структуры.
      * Извлекает списки текущих и выполненных задач.
      *
-     * @param file файл в формате JSON для импорта
      * @return FileData объект, содержащий импортированные списки задач
      * @throws IOException если файл не существует, недоступен для чтения или имеет неверный формат
      */
-    public FileData importData(File file) throws IOException {
+    public FileData importData(InputStream inputStream) throws IOException {
         try {
-            String fileContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-            System.out.println("=== СОДЕРЖИМОЕ ФАЙЛА ===");
-            System.out.println(fileContent);
-            System.out.println("=== КОНЕЦ СОДЕРЖИМОГО ===");
-
-            return objectMapper.readValue(file, FileData.class);
+            return objectMapper.readValue(inputStream, FileData.class);
         } catch (IOException e) {
             throw new IOException("Ошибка при чтении файла: " + e.getMessage(), e);
         }
