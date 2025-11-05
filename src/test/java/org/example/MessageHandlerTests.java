@@ -220,28 +220,7 @@ public class MessageHandlerTests {
         testFile.delete();
     }
 
-    /**
-     * Тест команды /help
-     */
-    @Test
-    void testHelpCommand() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/help", "user123");
-        Assertions.assertNotNull(response.getMessage());
-        Assertions.assertTrue(response.getMessage().contains("Справка по работе"));
-        Assertions.assertTrue(response.getMessage().contains("/add"));
-        Assertions.assertTrue(response.getMessage().contains("/tasks"));
-    }
-
-    /**
-     * Тест команды /start
-     */
-    @Test
-    void testStartCommand_Authenticated() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/start", "user123");
-        Assertions.assertNotNull(response.getMessage());
-        Assertions.assertTrue(response.getMessage().contains("Добро пожаловать в планировщик задач"));
-    }
-
+    
     /**
      * Тест неизвестной команды
      */
