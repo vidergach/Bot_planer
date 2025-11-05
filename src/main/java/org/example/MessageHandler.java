@@ -278,6 +278,47 @@ public class MessageHandler {
      * @param userInput ввод пользователя
      * @return разобранные части команды
      */
+    public BotResponse processImport(InputStream inputStream, String userId) {
+        try {
+            UserData userData = getUserData(userId);
+            FileWork.FileData result = fileWork.importData(inputStream);
+            int addedTasks = 0;
+            int addedCompleted = 0;
+            for (String task : result.current_tasks()) {
+                if (!userData.getTasks().contains(task) && !userData.getCompletedTasks().contains(task)) {
+                    userData.addTask(task);
+                    addedTasks++;
+                }
+            }
+            for (String task : result.completed_tasks()) {
+                if (!userData.getCompletedTasks().contains(task)) {
+                    if (userData.getTasks().contains(task)) {
+                        userData.markTaskDone(task);
+                        addedCompleted++;
+                    } else if (!userData.getCompletedTasks().contains(task)) {
+                        userData.addTask(task);
+                        userData.markTaskDone(task);
+                        addedCompleted++;
+                    }
+                }
+            }
+            return new BotResponse("""
+                    Задачи успешно добавлены,
+                    можете проверить списки с помощью команд /tasks и /dTask
+                    """);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при импорте: " + e.getMessage());
+        }
+    }
+
+    private UserData getUserDataForUserId(String userId) {
+        if (!userDataMap.containsKey(userId)) {
+            userDataMap.put(userId, new UserData());
+        }
+        return userDataMap.get(userId);
+    }
+
     private CommandParts parseCommand(String userInput) {
         if (userInput.isBlank()) {
             return new CommandParts("", "");
@@ -546,6 +587,7 @@ public class MessageHandler {
             e.printStackTrace();
             return new BotResponse("Ошибка при авторизации: " + e.getMessage());
         }
+        return new BotResponse("Неверный пароль. Попробуйте снова.");
     }
 
     /**

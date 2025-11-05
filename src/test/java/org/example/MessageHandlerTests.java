@@ -119,6 +119,7 @@ public class MessageHandlerTests {
         Assertions.assertTrue(response.getMessage().contains("1. Полить цветы"));
     }
 
+
     /**
      * Тест экспорта без имени файла.
      */
