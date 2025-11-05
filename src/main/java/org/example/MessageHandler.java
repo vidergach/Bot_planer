@@ -71,14 +71,12 @@ public class MessageHandler {
         }
     }
 
-
     /**
      * Вспомогательный класс, разделяет ввод пользователя на команду и параметры.
      */
     private class CommandParts {
         private final String command;
         private final String parameter;
-
 
         /**
          * Создает части команды.
@@ -167,10 +165,10 @@ public class MessageHandler {
             """;
 
     /**
-     * Основной метод обработки пользовательского ввода.да.
+     * Основной метод обработки пользовательского ввода.
      * Теперь возвращает структурированный BotResponse
      *
-     *  @param userInput текст сообщения от пользователяя
+     *  @param userInput текст сообщения от пользователя
      *  @param userId идентификатор пользователя
      *  @return ответ бота
      */
@@ -271,6 +269,13 @@ public class MessageHandler {
         return userDataMap.get(userId);
     }
 
+    /**
+     * Разделяет строку ввода по первому пробелу. Первое слово считается командой,
+     * остальная часть - параметрами.
+     *
+     * @param userInput ввод пользователя
+     * @return разобранные части команды
+     */
     private CommandParts parseCommand(String userInput) {
         if (userInput.isBlank()) {
             return new CommandParts("", "");
@@ -301,8 +306,8 @@ public class MessageHandler {
                 case "/done" -> handleMarkTaskDone(parameter, userId);
                 case "/dTask" -> handleShowCompletedTasks(userId);
                 case "/delete" -> handleDeleteTask(parameter, userId);
-                case "/registration" -> handleRegistration(userId);
-                case "/integration" -> handleIntegration(userId);
+                case "/registration" -> startRegistration(userId);
+                case "/integration" -> startIntegration(userId);
                 case "/export" -> handleExport(parameter, userId);
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
                 default -> new BotResponse("""
@@ -360,7 +365,7 @@ public class MessageHandler {
      *
      * @param parameter описание задачи для отметки
      * @param userId идентификатор пользователя
-     * @return ответ с результатом операциии
+     * @return ответ с результатом операции
      */
     private BotResponse handleMarkTaskDone(String parameter, String userId) {
         if (parameter.isEmpty()) {
@@ -439,12 +444,12 @@ public class MessageHandler {
     }
 
     /**
-     * Процесс регистрации нового пользователя.
+     * Начинает процесс регистрации нового пользователя.
      *
      * @param userId идентификатор пользователя
      * @return ответ с запросом логина
      */
-    private BotResponse handleRegistration(String userId) {
+    private BotResponse startRegistration(String userId) {
         authStates.put(userId, new AuthState("registration"));
         return new BotResponse("""
                 📝 Регистрация нового пользователя
@@ -453,12 +458,12 @@ public class MessageHandler {
     }
 
     /**
-     * Процесс входа в существующий аккаунт.
+     * Начинает процесс входа в существующий аккаунт.
      *
      * @param userId идентификатор пользователя
      * @return ответ с запросом логина
      */
-    private BotResponse handleIntegration(String userId) {
+    private BotResponse startIntegration(String userId) {
         authStates.put(userId, new AuthState("integration"));
         return new BotResponse("""
                 🔑 Вход в аккаунт
@@ -531,9 +536,9 @@ public class MessageHandler {
         authStates.remove(userId);
         try {
             if ("registration".equals(state.type)) {
-                return handleRegistration(state, password, userId);
+                return completeRegistration(state, password, userId);
             } else {
-                return handleIntegration(state, password, userId);
+                return completeIntegration(state, password, userId);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -549,7 +554,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя
      * @return ответ с результатом регистрации
      */
-    private BotResponse handleRegistration(AuthState state, String password, String userId) {
+    private BotResponse completeRegistration(AuthState state, String password, String userId) {
         if (userManager.registerUser(state.username, password)) {
             userManager.authenticateUser(state.username, password, userId);
             synchronizeUserData(userId, state.username);
@@ -568,7 +573,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя
      * @return ответ с результатом входа
      */
-    private BotResponse handleIntegration(AuthState state, String password, String userId) {
+    private BotResponse completeIntegration(AuthState state, String password, String userId) {
         if (userManager.authenticateUser(state.username, password, userId)) {
             synchronizeUserData(userId, state.username);
             return new BotResponse("""
