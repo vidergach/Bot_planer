@@ -1,30 +1,113 @@
 package org.example;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
-import java.io.File;
 
 /**
- * Основной обработчик сообщений для Telegram бота планировщика задач.
- * Отвечает за парсинг пользовательских команд, маршрутизацию и форматирование ответов.
- * Обеспечивает изоляцию данных между пользователями и потокобезопасность.
- *
- * @author Vika
- * @version 2.0
- * @see UserData
- * @see ConcurrentHashMap
+ * Основной обработчик сообщений для бота планировщика задач.
+ * Класс обрабатывает команды и управляет данными пользователей.
+ * Поддерживает авторизацию, регистрацию и все операции с задачами
  */
 public class MessageHandler {
     private final Map<String, UserData> userDataMap = new ConcurrentHashMap<>();
+    private final Map<String, AuthState> authStates = new ConcurrentHashMap<>();
     private final FileWork fileWork = new FileWork();
+    private final UserManager userManager = new UserManager();
+
     /**
-     * Приветственное сообщение, отправляемое пользователю при старте бота.
-     * Содержит описание функционала и список доступных команд.
+     * Структура для возврата ответа бота
+     * Содержит текстовое сообщение для отправки пользователю.
      */
-    private final String START_MESSAGE = """ 
+    public class BotResponse {
+        private final String message;
+        private final File file;
+        private final String fileName;
+
+        /**
+         * Создает текстовый ответ
+         *
+         * @param message текстовое сообщение
+         */
+        public BotResponse(String message) {
+            this.message = message;
+            this.file = null;
+            this.fileName = null;
+        }
+
+        /**
+         * Создает ответ с файлом
+         *
+         * @param message текстовое сообщение
+         * @param file файл
+         * @param fileName имя файла
+         */
+        public BotResponse(String message, File file, String fileName) {
+            this.message = message;
+            this.file = file;
+            this.fileName = fileName;
+        }
+
+        public String getMessage() { return message; }
+        public File getFile() { return file; }
+        public String getFileName() { return fileName; }
+        public boolean hasFile() { return file != null; }
+    }
+
+    /**
+     * Класс для отслеживания аутентификации пользователя.
+     * Хранит информацию о регистрации.
+     */
+    private class AuthState {
+        String type;
+        String username;
+        String step;
+
+        AuthState(String type) {
+            this.type = type;
+            this.step = "username";
+        }
+    }
+
+
+    /**
+     * Вспомогательный класс, разделяет ввод пользователя на команду и параметры.
+     */
+    private class CommandParts {
+        private final String command;
+        private final String parameter;
+
+
+        /**
+         * Создает части команды.
+         *
+         * @param command основная команда
+         * @param parameter параметры команды
+         */
+        public CommandParts(String command, String parameter) {
+            this.command = command;
+            this.parameter = parameter;
+        }
+        public String getCommand() { return command; }
+        public String getParameter() { return parameter; }
+    }
+
+    private static final String WELCOME_MESSAGE = """ 
+            Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
+            
+            ⚠️ Для начала работы необходимо авторизоваться:
+            /registration - зарегистрироваться (для новых пользователей)
+            /integration - войти в существующий аккаунт
+            
+            После авторизации вы сможете использовать все функции планировщика!
+            """;
+
+    private static final String START_MESSAGE = """ 
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             Я могу организовывать ваши задачи.
+            
             Команды:
             /add - добавить задачу
             /tasks - показать список задач
@@ -33,373 +116,526 @@ public class MessageHandler {
             /delete - удалить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
-            /help - помощь""";
-    /**
-     * Справочное сообщение с подробным описанием работы бота.
-     * Содержит примеры использования всех команд с ожидаемыми ответами.
-     */
-    private final String HELP_MESSAGE = """ 
-                Справка по работе:
-                Я планировщик задач😊 📝
-                Мои команды:
-                /add - добавить задачу
-                /tasks - показать список задач
-                /done - отметить выполненной
-                /dTask - список выполненных задач
-                /delete - удалить задачу
-                /export - предоставить список задач пользователя в файле
-                /import - загрузить список задач из файла
-                /help - помощь
-            
-                Например:
-                /add Полить цветы
-                - Задача "Полить цветы" добавлена!
-            
-                /add Накормить кота
-                - Задача "Накормить кота" добавлена!
-            
-                /add Полить цветы
-                - Задача "Полить цветы" уже есть в списке!
-            
-                /tasks
-                - Вот список ваших задач:
-                  1. Полить цветы
-                  2. Накормить кота
-            
-                /done Полить цветы
-                - Задача "Полить цветы" отмечена выполненной!
-            
-                /dTask
-                - ✅ Вот список выполненных задач:
-                  1. Полить цветы ✔
-            
-                /delete Накормить кота
-                - 🗑️ Задача "Накормить кота" удалена из списка задач!
-                
-                /export 'tasks_list.json'
-                - Ваш список задач в виде документа (отправка “tasks_list.json”)
-                
-                /import
-                - Отправьте JSON файл со списком задач
-                - (отправка “tasks_list.json”)
-                - Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask
-            
+            /help - помощь
             """;
 
+    private static final String HELP_MESSAGE = """ 
+            Справка по работе:
+            Я планировщик задач😊 📝
+            Мои команды:
+            /add - добавить задачу
+            /tasks - показать список задач
+            /done - отметить выполненной
+            /dTask - список выполненных задач
+            /delete - удалить задачу
+            /export - предоставить список задач пользователя в файле
+            /import - загрузить список задач из файла
+            /help - помощь
+            
+            Например:
+            /add Полить цветы
+            - Задача "Полить цветы" добавлена!
+            
+            /add Накормить кота
+            - Задача "Накормить кота" добавлена!
+            
+            /add Полить цветы
+            - Задача "Полить цветы" уже есть в списке!
+            
+            /tasks
+            - Вот список ваших задач:
+              1. Полить цветы
+              2. Накормить кота
+            
+            /done Полить цветы
+            - Задача "Полить цветы" отмечена выполненной!
+            
+            /dTask
+            - ✅ Вот список выполненных задач:
+              1. Полить цветы ✔
+            
+            /delete Накормить кота
+            - 🗑️ Задача "Накормить кота" удалена из списка задач!
+            
+            /export 'tasks_list.json'
+            - Ваш список задач в виде документа (отправка "tasks_list.json")
+            
+            /import
+            - Отправьте JSON файл со списком задач
+            - (отправка "tasks_list.json")
+            - Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask
+            """;
 
     /**
-     * Вспомогательный класс для хранения разобранных частей пользовательской команды.
-     * Содержит команду и параметр, извлеченные из пользовательского ввода.
+     * Основной метод обработки пользовательского ввода.да.
+     * Теперь возвращает структурированный BotResponse
+     *
+     *  @param userInput текст сообщения от пользователяя
+     *  @param userId идентификатор пользователя
+     *  @return ответ бота
      */
-    private class CommandParts {
-        private final String command;
-        private final String parameter;
+    public BotResponse processUserInput(String userInput, String userId) {
+        System.out.println("сообщение: " + userInput + " от: " + userId);
 
-        /**
-         * Создает новый экземпляр CommandParts с указанными командой и параметром.
-         *
-         * @param command
-         * @param parameter
-         */
-        public CommandParts(String command, String parameter) {
-            this.command = command;
-            this.parameter = parameter;
-        }
+        try {
+            if (!isUserAuthenticated(userId)) {
+                if (!authStates.containsKey(userId)) {
+                    CommandParts parts = parseCommand(userInput);
+                    String command = parts.getCommand();
 
-        /**
-         * Возвращает команду пользователя.
-         *
-         * @return команда в виде строки
-         */
-        public String getCommand() {
-            return command;
-        }
-
-        /**
-         * Возвращает параметр команды.
-         *
-         * @return параметр в виде строки, может быть пустой строкой если параметр не указан
-         */
-        public String getParameter() {
-            return parameter;
+                    if (command.equals("/registration") ||
+                            command.equals("/integration")) {
+                        return processCommand(command, parts.getParameter(), userId, null);
+                    } else {
+                        return new BotResponse(WELCOME_MESSAGE);
+                    }
+                } else {
+                    return handleAuthStep(userId, userInput);
+                }
+            }
+            UserData userData = getUserDataForUserId(userId);
+            CommandParts parts = parseCommand(userInput);
+            String command = parts.getCommand();
+            String parameter = parts.getParameter();
+            return processCommand(command, parameter, userId, userData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Произошла ошибка: " + e.getMessage());
         }
     }
 
     /**
-     * Парсит пользовательский ввод на команду и параметр.
-     * Разделяет входную строку по первому пробелу, если он присутствует.
+     * Проверяет, авторизован ли пользователь
      *
-     * @param userInput пользовательский ввод для парсинга
-     * @return объект CommandParts с разобранной командой и параметром
+     * @param userId идентификатор пользователя
+     * @return true если пользователь авторизован, false в противном случае
+     */
+    private boolean isUserAuthenticated(String userId) {
+        String username = userManager.getUsername(userId);
+        return username != null && !username.trim().isEmpty();
+    }
+
+    /**
+     * Обрабатывает импорт задач из файла
+     * Читает задачи из входного потока (JSON файла) и добавляет их в список
+     * задач пользователя.
+     *
+     * @param inputStream поток данных из загруженного файла
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом импорта
+     */
+    public BotResponse processImport(InputStream inputStream, String userId) {
+        try {
+            UserData userData = getUserData(userId);
+            FileWork.FileData result = fileWork.importData(inputStream);
+            int addedTasks = 0;
+            int addedCompleted = 0;
+            for (String task : result.current_tasks()) {
+                if (!userData.getTasks().contains(task) && !userData.getCompletedTasks().contains(task)) {
+                    userData.addTask(task);
+                    addedTasks++;
+                }
+            }
+            for (String task : result.completed_tasks()) {
+                if (!userData.getCompletedTasks().contains(task)) {
+                    if (userData.getTasks().contains(task)) {
+                        userData.markTaskDone(task);
+                        addedCompleted++;
+                    } else if (!userData.getCompletedTasks().contains(task)) {
+                        userData.addTask(task);
+                        userData.markTaskDone(task);
+                        addedCompleted++;
+                    }
+                }
+            }
+            return new BotResponse("""
+                    Задачи успешно добавлены,
+                    можете проверить списки с помощью команд /tasks и /dTask
+                    """);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при импорте: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Получает или создает данные пользователя по идентификатору.
+     *
+     * @param userId идентификатор пользователя
+     * @return объект UserData пользователя
+     */
+    private UserData getUserDataForUserId(String userId) {
+        if (!userDataMap.containsKey(userId)) {
+            userDataMap.put(userId, new UserData());
+        }
+        return userDataMap.get(userId);
+    }
+
+    /**
+     * Разделяет строку ввода по первому пробелу. Первое слово считается командой,
+     * остальная часть - параметрами.
+     *
+     * @param userInput ввод пользователя
+     * @return разобранные части команды
      */
     private CommandParts parseCommand(String userInput) {
         if (userInput.isBlank()) {
             return new CommandParts("", "");
         }
-
         String trimmedInput = userInput.trim();
         String[] parts = trimmedInput.split("\\s+", 2);
-
         String command = parts[0];
         String parameter = parts.length > 1 ? parts[1].trim() : "";
-
         return new CommandParts(command, parameter);
     }
 
     /**
-     * Основной метод обработки пользовательского ввода.
-     * Автоматически создает хранилище данных для новых пользователей.
-     * Логирует входящие сообщения и исходящие ответы.
+     * Выполняет соответствующую операцию в зависимости от команды и возвращает результат.
      *
-     * @param userInput текст сообщения от пользователя
-     * @param userId    уникальный идентификатор пользователя для изоляции данных
-     * @return текстовый ответ бота
-     * @see UserData
-     */
-    public String processUserInput(String userInput, String userId) {
-        System.out.println("сообщение: " + userInput + " от: " + userId);
-        UserData userData = userDataMap.computeIfAbsent(userId, k -> new UserData());
-
-        CommandParts parts = parseCommand(userInput);
-        String command = parts.getCommand();
-        String parameter = parts.getParameter();
-
-        String outputText = processCommand(command, parameter, userData);
-        System.out.println("Ответ: " + outputText);
-        return outputText;
-    }
-
-    /**
-     * Определяет и выполняет соответствующую команду пользователя.
-     * Маршрутизирует команды к соответствующим методам обработки.
-     *
-     * @param command   команда для выполнения
-     * @param parameter параметр команды
-     * @param userData  данные пользователя для операции
-     * @return результат выполнения команды в виде форматированного текста
-     */
-    private String processCommand(String command, String parameter, UserData userData) {
-        if ("/start".equals(command)) {
-            return START_MESSAGE;
-        } else if ("/help".equals(command)) {
-            return HELP_MESSAGE;
-        } else if ("/add".equals(command)) {
-            return addTask(parameter, userData);
-        } else if ("/tasks".equals(command)) {
-            return showTasks(userData);
-        } else if ("/done".equals(command)) {
-            return markTaskDone(parameter, userData);
-        } else if ("/dTask".equals(command)) {
-            return showCompletedTasks(userData);
-        } else if ("/delete".equals(command)) {
-            return deleteTask(parameter, userData);
-        } else if ("/export".equals(command)) {
-            if (parameter.isEmpty()) {
-                return "Напишите имя файла после /export";
-            }
-            return "Файл создан)";
-        } else if ("/import".equals(command)) {
-            return "Отправьте JSON файл со списком задач";
-        } else {
-            return """
-                    Неизвестная команда.
-                    Введите /help для просмотра доступных команд.""";
-        }
-    }
-
-    /**
-     * Экспортирует задачи пользователя в файл.
-     * Создает файл с текущими и завершенными задачами пользователя в указанном формате.
-     *
-     * @param userId идентификатор пользователя, чьи задачи необходимо экспортировать
-     * @param filename имя файла для экспорта
-     * @return File объект созданного файла с экспортированными задачами
-     * @throws Exception если пользователь не найден или у пользователя нет задач
-     */
-    public File Export_logic(String userId, String filename) throws Exception{
-        UserData userData = userDataMap.get(userId);
-        if(userData==null){
-            throw new Exception("Нет задач");
-        }
-        List<String> tasks = userData. getTasks();
-        List<String> completedTasks = userData.getCompletedTasks();
-
-        if(tasks.isEmpty() && completedTasks.isEmpty()){
-            throw new Exception("Нет задач");
-        }
-        return fileWork.export(userId, tasks, completedTasks, filename);
-    }
-
-    /**
-     * Импортирует задачи пользователя из файла.
-     * Добавляет задачи из файла в существующие списки пользователя, избегая дублирования.
-     * Автоматически помечает задачи как выполненные, если они присутствуют в соответствующем списке.
-     *
-     * @param file файл, содержащий задачи для импорта
-     * @param userId идентификатор пользователя, для которого импортируются задачи
-     * @return String сообщение о результате импорта с количеством добавленных задач
-     */
-    public String Import_logic(File file, String userId){
-        try{
-            UserData userData = userDataMap.get(userId);
-            if (userData == null) {
-                userData = new UserData();
-                userDataMap.put(userId, userData);
-            }
-
-            FileWork.FileData result = fileWork.importData(file);
-
-            int newTasks = 0;
-            int newCompleted = 0;
-
-            for (String task : result.current_tasks()){
-                boolean taskEx = userData.getTasks().contains(task) ||
-                        userData.getCompletedTasks().contains(task);
-                if(!taskEx){
-                    userData.addTask(task);
-                    newTasks++;
-                }
-            }
-            for (String task : result.completed_tasks()){
-                boolean inCurrent = userData.getTasks().contains(task);
-                boolean inCompleted = userData.getCompletedTasks().contains(task);
-
-                if(!inCurrent && !inCompleted){
-                    userData.addTask(task);
-                    userData.markTaskDone(task);
-                    newCompleted++;
-                }
-                else if(inCurrent && inCompleted){
-                    userData.markTaskDone(task);
-                    newCompleted++;
-                }
-            }
-
-            return "Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask";
-        } catch (Exception e){
-            return "Что-то пошло не так, отправьте файл еще раз или проверьте его содержимое";
-        }
-    }
-
-    /**
-     * Удаляет временный файл после использования.
-     * Используется для очистки временных файлов, созданных при экспорте/импорте задач.
-     *
-     * @param file файл для удаления
-     */
-    public void clean(File file){
-        fileWork.delete(file);
-    }
-
-    /**
-     * Добавляет новую задачу в список пользователя.
-     * Проверяет наличие параметра и обрабатывает исключения от UserData.
-     *
-     * @param parameter текст задачи для добавления
-     * @param userData  данные пользователя
-     * @return сообщение о результате операции добавления задачи
-     * @see UserData#addTask(String)
-     */
-    private String addTask(String parameter, UserData userData) {
-        if (parameter.isEmpty()) {
-            return """
-                    Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /add
-                    Например: /add Полить цветы""";
-        }
-        try{
-            userData.addTask(parameter);
-            return "Задача \"" + parameter + "\" добавлена!";
-        }catch (IllegalArgumentException|IllegalStateException e){
-            return e.getMessage();
-        }
-    }
-
-    /**
-     * Показывает список текущих задач пользователя.
-     * Форматирует задачи в нумерованный список.
-     *
+     * @param command команда для выполнения
+     * @param parameter параметры команды
+     * @param userId идентификатор пользователя
      * @param userData данные пользователя
-     * @return форматированный список задач или сообщение о пустом списке
-     * @see UserData#getTasks()
-     * @see UserData#hasTasks()
+     * @return ответ с результатом выполнения команды
      */
-    private String showTasks(UserData userData) {
+    private BotResponse processCommand(String command, String parameter, String userId, UserData userData) {
+        try {
+            return switch (command) {
+                case "/start" -> new BotResponse(isUserAuthenticated(userId) ? START_MESSAGE : WELCOME_MESSAGE);
+                case "/help" -> new BotResponse(HELP_MESSAGE);
+                case "/add" -> handleAddTask(parameter, userId);
+                case "/tasks" -> handleShowTasks(userId);
+                case "/done" -> handleMarkTaskDone(parameter, userId);
+                case "/dTask" -> handleShowCompletedTasks(userId);
+                case "/delete" -> handleDeleteTask(parameter, userId);
+                case "/registration" -> handleRegistration(userId);
+                case "/integration" -> handleIntegration(userId);
+                case "/export" -> handleExport(parameter, userId);
+                case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
+                default -> new BotResponse("""
+                        Неизвестная команда.
+                        Введите /help для просмотра доступных команд.""");
+            };
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при выполнении команды: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Обрабатывает добавление новой задачи.
+     *
+     * @param parameter описание задачи
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
+     */
+    private BotResponse handleAddTask(String parameter, String userId) {
+        if (parameter.isEmpty()) {
+            return new BotResponse("""
+                    Укажите задачу после /add
+                    Например: /add Купить молоко""");
+        }
+        try {
+            getUserData(userId).addTask(parameter);
+            return new BotResponse("Задача \"" + parameter + "\" добавлена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
+        }
+    }
+
+    /**
+     * Обрабатывает отображение списка текущих задач.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ со списком задач
+     */
+    private BotResponse handleShowTasks(String userId) {
+        UserData userData = getUserData(userId);
         if (!userData.hasTasks()) {
-            return "Список задач пуст!";
+            return new BotResponse("📝 Список задач пуст!");
         }
         List<String> tasks = userData.getTasks();
-        StringBuilder sb = new StringBuilder("Вот список ваших задач:\n");
+        StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
         for (int i = 0; i < tasks.size(); i++) {
-            sb.append("  ").append(i + 1).append(". ").append(tasks.get(i)).append("\n");
+            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
         }
-        return sb.toString();
+        return new BotResponse(sb.toString());
     }
 
     /**
-     * Отмечает задачу как выполненную.
-     * Перемещает задачу из списка текущих в список выполненных задач.
+     * Обрабатывает отметку задачи как выполненной.
      *
-     * @param parameter текст задачи для отметки как выполненной
-     * @param userData  данные пользователя
-     * @return сообщение о результате операции
-     * @see UserData#markTaskDone(String)
+     * @param parameter описание задачи для отметки
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операциии
      */
-    private String markTaskDone(String parameter, UserData userData) {
+    private BotResponse handleMarkTaskDone(String parameter, String userId) {
         if (parameter.isEmpty()) {
-            return """
-                    Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /done
-                    Например: /done Полить цветы""";
+            return new BotResponse("""
+                    Укажите задачу после /done
+                    Например: /done Купить молоко""");
         }
-        try{
-            userData.markTaskDone(parameter);
-            return "Задача \"" + parameter + "\" отмечена выполненной!";
-        }catch (IllegalArgumentException|IllegalStateException e){
-            return e.getMessage();
+        try {
+            getUserData(userId).markTaskDone(parameter);
+            return new BotResponse("✅ Задача \"" + parameter + "\" выполнена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
         }
     }
 
-
     /**
-     * Показывает список выполненных задач пользователя.
-     * Форматирует задачи с использованием эмодзи для визуального выделения.
+     * Обрабатывает отображение списка выполненных задач.
      *
-     * @param userData данные пользователя
-     * @return форматированный список выполненных задач или сообщение о пустом списке
-     * @see UserData#getCompletedTasks()
-     * @see UserData#hasCompletedTasks()
+     * @param userId идентификатор пользователя
+     * @return ответ со списком выполненных задач
      */
-    private String showCompletedTasks(UserData userData) {
+    private BotResponse handleShowCompletedTasks(String userId) {
+        UserData userData = getUserData(userId);
         if (!userData.hasCompletedTasks()) {
-            return "Список выполненных задач пуст!";
+            return new BotResponse("✅ Список выполненных задач пуст!");
         }
         List<String> completedTasks = userData.getCompletedTasks();
-        StringBuilder sb = new StringBuilder("✅ Вот список выполненных задач:\n");
+        StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
         for (int i = 0; i < completedTasks.size(); i++) {
-            sb.append("  ").append(i + 1).append(". ").append(completedTasks.get(i)).append(" ✔\n");
+            sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
         }
-        return sb.toString();
+        return new BotResponse(sb.toString());
     }
 
     /**
-     * Удаляет задачу из списка пользователя.
-     * Полностью удаляет задачу без перемещения в список выполненных.
+     * Обрабатывает удаление задачи из списка.
      *
-     * @param parameter текст задачи для удаления
-     * @param userData  данные пользователя
-     * @return сообщение о результате операции удаления
-     * @see UserData#deleteTask(String)
+     * @param parameter описание задачи для удаления
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
      */
-    private String deleteTask(String parameter, UserData userData) {
+    private BotResponse handleDeleteTask(String parameter, String userId) {
         if (parameter.isEmpty()) {
-            return """
-                    Упс\uD83D\uDE05, похоже вы забыли указать задачу после команды /delete.
-                    Например: /delete Полить цветы""";
+            return new BotResponse("""
+                    Укажите задачу после /delete
+                    Например: /delete Купить молоко""");
         }
-        try{
-            userData.deleteTask(parameter);
-            return "🗑️ Задача \"" + parameter + "\" удалена из списка задач!";
-        }catch (IllegalArgumentException | IllegalStateException e){
-            return e.getMessage();
+        try {
+            getUserData(userId).deleteTask(parameter);
+            return new BotResponse("🗑️ Задача \"" + parameter + "\" удалена!");
+        } catch (IllegalStateException e) {
+            return new BotResponse(e.getMessage());
         }
+    }
+
+    /**
+     * Обрабатывает экспорт задач в файл.
+     *
+     * @param parameter имя файла для экспорта
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции и файлом для отправки
+     */
+    private BotResponse handleExport(String parameter, String userId) {
+        if (parameter.isEmpty()) {
+            return new BotResponse("Напишите имя файла после /export");
+        }
+        try {
+            UserData userData = getUserData(userId);
+            File exportFile = fileWork.export(userId, userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
+            return new BotResponse("Ваши задачи экспортированы в файл: "
+                    + exportFile.getName(), exportFile, exportFile.getName());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка экспорта: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Процесс регистрации нового пользователя.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом логина
+     */
+    private BotResponse handleRegistration(String userId) {
+        authStates.put(userId, new AuthState("registration"));
+        return new BotResponse("""
+                📝 Регистрация нового пользователя
+                Введите логин:
+                """);
+    }
+
+    /**
+     * Процесс входа в существующий аккаунт.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом логина
+     */
+    private BotResponse handleIntegration(String userId) {
+        authStates.put(userId, new AuthState("integration"));
+        return new BotResponse("""
+                🔑 Вход в аккаунт
+                Введите логин:
+                """);
+    }
+
+    /**
+     * Обрабатывает шаг процесса аутентификации.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя (логин или пароль)
+     * @return ответ с запросом следующего шага или результатом аутентификации
+     */
+    private BotResponse handleAuthStep(String userId, String userInput) {
+        AuthState state = authStates.get(userId);
+        if ("username".equals(state.step)) {
+            return processUsernameStep(state, userInput, userId);
+        } else if ("password".equals(state.step)) {
+            return processPasswordStep(state, userInput, userId);
+        }
+        authStates.remove(userId);
+        return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
+    }
+
+    /**
+     * Обрабатывает ввод логина в процессе аутентификации.
+     *
+     * @param state текущее состояние аутентификации
+     * @param userInput введенный логин
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом пароля или сообщением об ошибке
+     */
+    private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
+        if (userInput.trim().isEmpty()) {
+            return new BotResponse("""
+                    Упс, кажется вы забыли ввести логин.
+                    Введите логин:
+                    """);
+        }
+        String username = userInput.trim();
+        if ("registration".equals(state.type) && userManager.isUserRegistered(username)) {
+            authStates.remove(userId);
+            return new BotResponse("""
+                    Пользователь с таким логином уже существует.
+                    Используйте другой логин или войдите с помощью /integration.""");
+        }
+        if ("integration".equals(state.type) && !userManager.isUserRegistered(username)) {
+            authStates.remove(userId);
+            return new BotResponse("""
+                    Пользователь '%s' не найден.
+                    Проверьте логин или зарегистрируйтесь с помощью /registration."""
+                    .formatted(username));
+        }
+        state.username = username;
+        state.step = "password";
+        return new BotResponse("✅Отлично! Теперь введите пароль:");
+    }
+
+    /**
+     * Обрабатывает ввод пароля в процессе аутентификации.
+     *
+     * @param state текущее состояние аутентификации
+     * @param userInput введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом аутентификации
+     */
+    private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
+        String password = userInput.trim();
+        authStates.remove(userId);
+        try {
+            if ("registration".equals(state.type)) {
+                return handleRegistration(state, password, userId);
+            } else {
+                return handleIntegration(state, password, userId);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при авторизации: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Завершает процесс регистрации нового пользователя.
+     *
+     * @param state состояние аутентификации
+     * @param password введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом регистрации
+     */
+    private BotResponse handleRegistration(AuthState state, String password, String userId) {
+        if (userManager.registerUser(state.username, password)) {
+            userManager.authenticateUser(state.username, password, userId);
+            synchronizeUserData(userId, state.username);
+            return new BotResponse("""
+                    ✅ Регистрация прошла успешно!
+                    """);
+        }
+        return new BotResponse("Ошибка регистрации. Попробуйте снова.");
+    }
+
+    /**
+     * Завершает процесс входа в аккаунт.
+     *
+     * @param state состояние аутентификации
+     * @param password введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом входа
+     */
+    private BotResponse handleIntegration(AuthState state, String password, String userId) {
+        if (userManager.authenticateUser(state.username, password, userId)) {
+            synchronizeUserData(userId, state.username);
+            return new BotResponse("""
+                    ✅ Вход выполнен успешно!
+                    Данные синхронизированы.
+                    
+                    Добро пожаловать обратно!""");
+        }
+        return new BotResponse("Неверный пароль. Попробуйте снова.");
+    }
+
+    /**
+     * Получает данные пользователя с учетом его авторизации.
+     *
+     * @param userId идентификатор пользователя
+     * @return объект UserData пользователя
+     */
+    private UserData getUserData(String userId) {
+        String username = userManager.getUsername(userId);
+        String dataKey = username != null ? username : userId;
+
+        if (!userDataMap.containsKey(dataKey)) {
+            userDataMap.put(dataKey, new UserData());
+        }
+        return userDataMap.get(dataKey);
+    }
+
+    /**
+     * Синхронизирует данные пользователя после успешной аутентификации.
+     *
+     * @param oldUserId старый идентификатор пользователя
+     * @param newUsername новое имя пользователя
+     */
+    private void synchronizeUserData(String oldUserId, String newUsername) {
+        UserData oldData = userDataMap.get(oldUserId);
+        UserData newData = getUserData(newUsername);
+
+        if (oldData == null || newData == null) return;
+
+        for (String task : oldData.getTasks()) {
+            if (!newData.getTasks().contains(task) && !newData.getCompletedTasks().contains(task)) {
+                try {
+                    newData.addTask(task);
+                } catch (IllegalStateException ignored) {}
+            }
+        }
+
+        for (String task : oldData.getCompletedTasks()) {
+            if (!newData.getCompletedTasks().contains(task)) {
+                try {
+                    if (newData.getTasks().contains(task)) {
+                        newData.markTaskDone(task);
+                    } else {
+                        newData.addTask(task);
+                        newData.markTaskDone(task);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        userDataMap.remove(oldUserId);
     }
 }
