@@ -16,6 +16,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final MessageHandler logic;
     private final String botUsername;
 
+    /**
+     * Создаем новый экземпляр Telegram бота.
+     *
+     * @param botUsername имя бота в Telegram
+     * @param botToken токен для доступа к API Telegram Bot
+     * @param logic обработчик логики команд и сообщений
+     */
     public TelegramBot(String botUsername, String botToken, MessageHandler logic) {
         super(botToken);
         this.botUsername = botUsername;
@@ -52,6 +59,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (Exception e) {
             try {
+                e.printStackTrace();
                 execute(new SendMessage(chatId, "Ошибка: " + e.getMessage()));
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();
@@ -59,6 +67,13 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    /**
+     * Обрабатывает команду импорта задач из файлового вложения.
+     *
+     * @param chatId идентификатор чата для отправки ответа
+     * @param userId идентификатор пользователя для задач
+     * @param update объект обновления с информацией о файле
+     */
     private void handleImportCommand(String chatId, String userId, Update update) {
         try {
             String fileId = update.getMessage().getDocument().getFileId();
@@ -73,6 +88,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (Exception e) {
             try {
+                e.printStackTrace();
                 execute(new SendMessage(chatId, "Ошибка импорта: " + e.getMessage()));
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();

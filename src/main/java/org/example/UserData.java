@@ -5,6 +5,8 @@ import java.util.List;
 
 /**
  * Инкапсулирует логику работы с задачами
+ * Класс управляет двумя списками задач: текущими и выполненными.
+ * Предоставляет методы для работы с задачами.
  */
 public class UserData {
     private final List<String> tasks = new ArrayList<>();
@@ -12,6 +14,8 @@ public class UserData {
 
     /**
      * Возвращает копию списка текущих задач
+     *
+     * @return новый список, содержащий все текущие задачи
      */
     public List<String> getTasks() {
         return new ArrayList<>(tasks);
@@ -19,6 +23,8 @@ public class UserData {
 
     /**
      * Возвращает копию списка выполненных задач
+     *
+     * @return новый список, содержащий все выполненные задачи
      */
     public List<String> getCompletedTasks() {
         return new ArrayList<>(completedTasks);
@@ -26,6 +32,9 @@ public class UserData {
 
     /**
      * Добавляет новую задачу.
+     *
+     * @param task описание задачи для добавления
+     * @throws IllegalStateException если задача уже существует в списке
      */
     public void addTask(String task) {
         String trimmedTask = task.trim();
@@ -37,6 +46,9 @@ public class UserData {
 
     /**
      * Отмечает задачу как выполненную.
+     *
+     * @param task описание задачи для отметки как выполненной
+     * @throws IllegalStateException если задача не найдена в списке текущих задач
      */
     public void markTaskDone(String task) {
         String trimmedTask = task.trim();
@@ -49,6 +61,9 @@ public class UserData {
 
     /**
      * Удаляет задачу.
+     *
+     * @param task описание задачи для удаления
+     * @throws IllegalStateException если задача не найдена в списке текущих задач
      */
     public void deleteTask(String task) {
         String trimmedTask = task.trim();
@@ -60,6 +75,8 @@ public class UserData {
 
     /**
      * Проверяет, есть ли текущие задачи.
+     *
+     * @return true если есть хотя бы одна текущая задача, false в противном случае
      */
     public boolean hasTasks() {
         return !tasks.isEmpty();
@@ -67,6 +84,8 @@ public class UserData {
 
     /**
      * Проверяет, есть ли выполненные задачи.
+     *
+     * @return true если есть хотя бы одна выполненная задача, false в противном случае
      */
     public boolean hasCompletedTasks() {
         return !completedTasks.isEmpty();

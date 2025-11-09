@@ -12,6 +12,10 @@ public class UserManager {
 
     /**
      * Регистрирует нового пользователя
+     *
+     * @param username имя пользователя для регистрации
+     * @param password пароль пользователя
+     * @return true если регистрация прошла успешно, false если пользователь уже существует
      */
     public synchronized boolean registerUser(String username, String password) {
         if (userPasswords.containsKey(username)) {
@@ -23,6 +27,11 @@ public class UserManager {
 
     /**
      * Аутентифицирует пользователя
+     *
+     * @param username имя пользователя для аутентификации
+     * @param password пароль для проверки
+     * @param platformId уникальный идентификатор платформы
+     * @return true если аутентификация прошла успешно, false в противном случае
      */
     public boolean authenticateUser(String username, String password, String platformId) {
         String storedPassword = userPasswords.get(username);
@@ -35,6 +44,9 @@ public class UserManager {
 
     /**
      * Получает имя пользователя по platformId
+     *
+     * @param platformId идентификатор платформы
+     * @return имя пользователя или null если привязка не найдена
      */
     public String getUsername(String platformId) {
         return platformToUsername.get(platformId);
@@ -42,6 +54,9 @@ public class UserManager {
 
     /**
      * Проверяет, зарегистрирован ли пользователь
+     *
+     * @param username имя пользователя для проверки
+     * @return true если пользователь зарегистрирован, false в противном случае
      */
     public boolean isUserRegistered(String username) {
         return userPasswords.containsKey(username);

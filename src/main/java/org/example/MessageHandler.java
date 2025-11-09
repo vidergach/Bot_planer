@@ -8,7 +8,8 @@ import java.util.Map;
 
 /**
  * Основной обработчик сообщений для бота планировщика задач.
- * Теперь возвращает структурированный ответ с поддержкой файлов
+ * Класс обрабатывает команды и управляет данными пользователей.
+ * Поддерживает авторизацию, регистрацию и все операции с задачами
  */
 public class MessageHandler {
     private final Map<String, UserData> userDataMap = new ConcurrentHashMap<>();
@@ -18,18 +19,31 @@ public class MessageHandler {
 
     /**
      * Структура для возврата ответа бота
+     * Содержит текстовое сообщение для отправки пользователю.
      */
     public class BotResponse {
         private final String message;
         private final File file;
         private final String fileName;
 
+        /**
+         * Создает текстовый ответ
+         *
+         * @param message текстовое сообщение
+         */
         public BotResponse(String message) {
             this.message = message;
             this.file = null;
             this.fileName = null;
         }
 
+        /**
+         * Создает ответ с файлом
+         *
+         * @param message текстовое сообщение
+         * @param file файл
+         * @param fileName имя файла
+         */
         public BotResponse(String message, File file, String fileName) {
             this.message = message;
             this.file = file;
@@ -42,6 +56,10 @@ public class MessageHandler {
         public boolean hasFile() { return file != null; }
     }
 
+    /**
+     * Класс для отслеживания аутентификации пользователя.
+     * Хранит информацию о регистрации.
+     */
     private class AuthState {
         String type;
         String username;
@@ -53,10 +71,19 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Вспомогательный класс, разделяет ввод пользователя на команду и параметры.
+     */
     private class CommandParts {
         private final String command;
         private final String parameter;
 
+        /**
+         * Создает части команды.
+         *
+         * @param command основная команда
+         * @param parameter параметры команды
+         */
         public CommandParts(String command, String parameter) {
             this.command = command;
             this.parameter = parameter;
@@ -140,6 +167,10 @@ public class MessageHandler {
     /**
      * Основной метод обработки пользовательского ввода.
      * Теперь возвращает структурированный BotResponse
+     *
+     *  @param userInput текст сообщения от пользователя
+     *  @param userId идентификатор пользователя
+     *  @return ответ бота
      */
     public BotResponse processUserInput(String userInput, String userId) {
         System.out.println("сообщение: " + userInput + " от: " + userId);
@@ -152,7 +183,7 @@ public class MessageHandler {
 
                     if (command.equals("/registration") ||
                             command.equals("/integration")) {
-                        return processCommand(command, parts.getParameter(), userId, null);
+                        return processCommand(command, parts.getParameter(), userId);
                     } else {
                         return new BotResponse(WELCOME_MESSAGE);
                     }
@@ -164,7 +195,7 @@ public class MessageHandler {
             CommandParts parts = parseCommand(userInput);
             String command = parts.getCommand();
             String parameter = parts.getParameter();
-            return processCommand(command, parameter, userId, userData);
+            return processCommand(command, parameter, userId);
         } catch (Exception e) {
             e.printStackTrace();
             return new BotResponse("Произошла ошибка: " + e.getMessage());
@@ -173,6 +204,9 @@ public class MessageHandler {
 
     /**
      * Проверяет, авторизован ли пользователь
+     *
+     * @param userId идентификатор пользователя
+     * @return true если пользователь авторизован, false в противном случае
      */
     private boolean isUserAuthenticated(String userId) {
         String username = userManager.getUsername(userId);
@@ -180,7 +214,13 @@ public class MessageHandler {
     }
 
     /**
-     * Обрабатывает импорт файла
+     * Обрабатывает импорт задач из файла
+     * считывает задачи из входного потока (JSON файла) и добавляет их в список
+     * задач пользователя.
+     *
+     * @param inputStream поток данных из загруженного файла
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом импорта
      */
     public BotResponse processImport(InputStream inputStream, String userId) {
         try {
@@ -216,6 +256,12 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Получает или создает данные пользователя по идентификатору.
+     *
+     * @param userId идентификатор пользователя
+     * @return объект UserData пользователя
+     */
     private UserData getUserDataForUserId(String userId) {
         if (!userDataMap.containsKey(userId)) {
             userDataMap.put(userId, new UserData());
@@ -223,6 +269,13 @@ public class MessageHandler {
         return userDataMap.get(userId);
     }
 
+    /**
+     * Разделяет строку ввода по первому пробелу. Первое слово считается командой,
+     * остальная часть - параметрами.
+     *
+     * @param userInput ввод пользователя
+     * @return разобранные части команды
+     */
     private CommandParts parseCommand(String userInput) {
         if (userInput.isBlank()) {
             return new CommandParts("", "");
@@ -234,18 +287,26 @@ public class MessageHandler {
         return new CommandParts(command, parameter);
     }
 
-    private BotResponse processCommand(String command, String parameter, String userId, UserData userData) {
+    /**
+     * Выполняет соответствующую операцию в зависимости от команды и возвращает результат.
+     *
+     * @param command команда для выполнения
+     * @param parameter параметры команды
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом выполнения команды
+     */
+    private BotResponse processCommand(String command, String parameter, String userId) {
         try {
             return switch (command) {
-                case "/start" -> new BotResponse(isUserAuthenticated(userId) ? START_MESSAGE : WELCOME_MESSAGE);
+                case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
                 case "/add" -> handleAddTask(parameter, userId);
                 case "/tasks" -> handleShowTasks(userId);
                 case "/done" -> handleMarkTaskDone(parameter, userId);
                 case "/dTask" -> handleShowCompletedTasks(userId);
                 case "/delete" -> handleDeleteTask(parameter, userId);
-                case "/registration" -> handleRegistration(userId);
-                case "/integration" -> handleIntegration(userId);
+                case "/registration" -> startRegistration(userId);
+                case "/integration" -> startIntegration(userId);
                 case "/export" -> handleExport(parameter, userId);
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
                 default -> new BotResponse("""
@@ -258,6 +319,13 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает добавление новой задачи.
+     *
+     * @param parameter описание задачи
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
+     */
     private BotResponse handleAddTask(String parameter, String userId) {
         if (parameter.isEmpty()) {
             return new BotResponse("""
@@ -272,6 +340,12 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает отображение списка текущих задач.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ со списком задач
+     */
     private BotResponse handleShowTasks(String userId) {
         UserData userData = getUserData(userId);
         if (!userData.hasTasks()) {
@@ -285,6 +359,13 @@ public class MessageHandler {
         return new BotResponse(sb.toString());
     }
 
+    /**
+     * Обрабатывает отметку задачи как выполненной.
+     *
+     * @param parameter описание задачи для отметки
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
+     */
     private BotResponse handleMarkTaskDone(String parameter, String userId) {
         if (parameter.isEmpty()) {
             return new BotResponse("""
@@ -299,6 +380,12 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает отображение списка выполненных задач.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ со списком выполненных задач
+     */
     private BotResponse handleShowCompletedTasks(String userId) {
         UserData userData = getUserData(userId);
         if (!userData.hasCompletedTasks()) {
@@ -312,6 +399,13 @@ public class MessageHandler {
         return new BotResponse(sb.toString());
     }
 
+    /**
+     * Обрабатывает удаление задачи из списка.
+     *
+     * @param parameter описание задачи для удаления
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
+     */
     private BotResponse handleDeleteTask(String parameter, String userId) {
         if (parameter.isEmpty()) {
             return new BotResponse("""
@@ -326,6 +420,13 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает экспорт задач в файл.
+     *
+     * @param parameter имя файла для экспорта
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции и файлом для отправки
+     */
     private BotResponse handleExport(String parameter, String userId) {
         if (parameter.isEmpty()) {
             return new BotResponse("Напишите имя файла после /export");
@@ -341,7 +442,13 @@ public class MessageHandler {
         }
     }
 
-    private BotResponse handleRegistration(String userId) {
+    /**
+     * Начинает процесс регистрации нового пользователя.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом логина
+     */
+    private BotResponse startRegistration(String userId) {
         authStates.put(userId, new AuthState("registration"));
         return new BotResponse("""
                 📝 Регистрация нового пользователя
@@ -349,7 +456,13 @@ public class MessageHandler {
                 """);
     }
 
-    private BotResponse handleIntegration(String userId) {
+    /**
+     * Начинает процесс входа в существующий аккаунт.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом логина
+     */
+    private BotResponse startIntegration(String userId) {
         authStates.put(userId, new AuthState("integration"));
         return new BotResponse("""
                 🔑 Вход в аккаунт
@@ -357,6 +470,13 @@ public class MessageHandler {
                 """);
     }
 
+    /**
+     * Обрабатывает шаг процесса аутентификации.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя (логин или пароль)
+     * @return ответ с запросом следующего шага или результатом аутентификации
+     */
     private BotResponse handleAuthStep(String userId, String userInput) {
         AuthState state = authStates.get(userId);
         if ("username".equals(state.step)) {
@@ -368,6 +488,14 @@ public class MessageHandler {
         return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
     }
 
+    /**
+     * Обрабатывает ввод логина в процессе аутентификации.
+     *
+     * @param state текущее состояние аутентификации
+     * @param userInput введенный логин
+     * @param userId идентификатор пользователя
+     * @return ответ с запросом пароля или сообщением об ошибке
+     */
     private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
         if (userInput.trim().isEmpty()) {
             return new BotResponse("""
@@ -394,14 +522,22 @@ public class MessageHandler {
         return new BotResponse("✅Отлично! Теперь введите пароль:");
     }
 
+    /**
+     * Обрабатывает ввод пароля в процессе аутентификации.
+     *
+     * @param state текущее состояние аутентификации
+     * @param userInput введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом аутентификации
+     */
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
         authStates.remove(userId);
         try {
             if ("registration".equals(state.type)) {
-                return handleRegistration(state, password, userId);
+                return completeRegistration(state, password, userId);
             } else {
-                return handleIntegration(state, password, userId);
+                return completeIntegration(state, password, userId);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -409,7 +545,15 @@ public class MessageHandler {
         }
     }
 
-    private BotResponse handleRegistration(AuthState state, String password, String userId) {
+    /**
+     * Завершает процесс регистрации нового пользователя.
+     *
+     * @param state состояние аутентификации
+     * @param password введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом регистрации
+     */
+    private BotResponse completeRegistration(AuthState state, String password, String userId) {
         if (userManager.registerUser(state.username, password)) {
             userManager.authenticateUser(state.username, password, userId);
             synchronizeUserData(userId, state.username);
@@ -420,7 +564,15 @@ public class MessageHandler {
         return new BotResponse("Ошибка регистрации. Попробуйте снова.");
     }
 
-    private BotResponse handleIntegration(AuthState state, String password, String userId) {
+    /**
+     * Завершает процесс входа в аккаунт.
+     *
+     * @param state состояние аутентификации
+     * @param password введенный пароль
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом входа
+     */
+    private BotResponse completeIntegration(AuthState state, String password, String userId) {
         if (userManager.authenticateUser(state.username, password, userId)) {
             synchronizeUserData(userId, state.username);
             return new BotResponse("""
@@ -432,6 +584,12 @@ public class MessageHandler {
         return new BotResponse("Неверный пароль. Попробуйте снова.");
     }
 
+    /**
+     * Получает данные пользователя с учетом его авторизации.
+     *
+     * @param userId идентификатор пользователя
+     * @return объект UserData пользователя
+     */
     private UserData getUserData(String userId) {
         String username = userManager.getUsername(userId);
         String dataKey = username != null ? username : userId;
@@ -442,14 +600,22 @@ public class MessageHandler {
         return userDataMap.get(dataKey);
     }
 
+    /**
+     * Синхронизирует данные пользователя после успешной аутентификации.
+     *
+     * @param oldUserId старый идентификатор пользователя
+     * @param newUsername новое имя пользователя
+     */
     private void synchronizeUserData(String oldUserId, String newUsername) {
         UserData oldData = userDataMap.get(oldUserId);
         UserData newData = getUserData(newUsername);
 
-        if (oldData == null || newData == null) return;
+        if (oldData == null || newData == null)
+            return;
 
         for (String task : oldData.getTasks()) {
-            if (!newData.getTasks().contains(task) && !newData.getCompletedTasks().contains(task)) {
+            if (!newData.getTasks().contains(task) &&
+                    !newData.getCompletedTasks().contains(task)) {
                 try {
                     newData.addTask(task);
                 } catch (IllegalStateException ignored) {}
@@ -468,7 +634,6 @@ public class MessageHandler {
                 } catch (Exception ignored) {}
             }
         }
-
         userDataMap.remove(oldUserId);
     }
 }

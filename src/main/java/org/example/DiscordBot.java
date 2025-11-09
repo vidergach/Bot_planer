@@ -14,6 +14,8 @@ import java.util.List;
 
 /**
  * Discord бот для управления задачами через Discord.
+ * Этот класс реализует Discord бота, который взаимодействует с пользователями
+ * через текстовые сообщения и файловые вложения для управления задачами.
  */
 public class DiscordBot extends ListenerAdapter {
     private final String token;
@@ -24,6 +26,9 @@ public class DiscordBot extends ListenerAdapter {
         this.logic = logic;
     }
 
+    /**
+     * Запускает Discord бота и инициализирует подключение к Discord API.
+     */
     public void start() {
         try {
             JDA jda = JDABuilder.createDefault(token)
@@ -66,7 +71,15 @@ public class DiscordBot extends ListenerAdapter {
     }
 
     /**
-     * Обрабатывает вложение файла для импорта
+     * Обрабатывает вложение файла для импорта данных.
+     * Загружает прикрепленный файл, передает его в логику обработки и отправляет
+     * результат обратно.
+     *
+     * @param event полученное сообщения
+     * @param userId идентификатор пользователя
+     * @param channel канал, в который было отправлено сообщение
+     * @see Message.Attachment
+     * @see InputStream
      */
     private void handleImportAttachment(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
         List<Message.Attachment> attachments = event.getMessage().getAttachments();
