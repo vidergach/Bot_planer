@@ -167,7 +167,7 @@ public class MessageHandlerTests {
         userData.addTask("Задача 2");
         userData.markTaskDone("Задача 1");
 
-        File exportFile = fileWork.export("testUser",
+        File exportFile = fileWork.export(
                 userData.getTasks(),
                 userData.getCompletedTasks(),
                 "test_export_direct.json");
