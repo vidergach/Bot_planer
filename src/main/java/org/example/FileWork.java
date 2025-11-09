@@ -64,17 +64,6 @@ public class FileWork {
     }
 
     /**
-     * Удаляет указанный файл.
-     *
-     * @param file файл для удаления
-     */
-    public void delete(File file){
-        if(file != null && file.exists()){
-            file.delete();
-        }
-    }
-
-    /**
      * Record для хранения данных файла задач.
      *
      * @param current_tasks список текущих задач

@@ -183,7 +183,7 @@ public class MessageHandler {
 
                     if (command.equals("/registration") ||
                             command.equals("/integration")) {
-                        return processCommand(command, parts.getParameter(), userId, null);
+                        return processCommand(command, parts.getParameter(), userId);
                     } else {
                         return new BotResponse(WELCOME_MESSAGE);
                     }
@@ -195,7 +195,7 @@ public class MessageHandler {
             CommandParts parts = parseCommand(userInput);
             String command = parts.getCommand();
             String parameter = parts.getParameter();
-            return processCommand(command, parameter, userId, userData);
+            return processCommand(command, parameter, userId);
         } catch (Exception e) {
             e.printStackTrace();
             return new BotResponse("Произошла ошибка: " + e.getMessage());
@@ -215,7 +215,7 @@ public class MessageHandler {
 
     /**
      * Обрабатывает импорт задач из файла
-     * Читает задачи из входного потока (JSON файла) и добавляет их в список
+     * считывает задачи из входного потока (JSON файла) и добавляет их в список
      * задач пользователя.
      *
      * @param inputStream поток данных из загруженного файла
@@ -293,13 +293,12 @@ public class MessageHandler {
      * @param command команда для выполнения
      * @param parameter параметры команды
      * @param userId идентификатор пользователя
-     * @param userData данные пользователя
      * @return ответ с результатом выполнения команды
      */
-    private BotResponse processCommand(String command, String parameter, String userId, UserData userData) {
+    private BotResponse processCommand(String command, String parameter, String userId) {
         try {
             return switch (command) {
-                case "/start" -> new BotResponse(isUserAuthenticated(userId) ? START_MESSAGE : WELCOME_MESSAGE);
+                case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
                 case "/add" -> handleAddTask(parameter, userId);
                 case "/tasks" -> handleShowTasks(userId);
@@ -611,10 +610,12 @@ public class MessageHandler {
         UserData oldData = userDataMap.get(oldUserId);
         UserData newData = getUserData(newUsername);
 
-        if (oldData == null || newData == null) return;
+        if (oldData == null || newData == null)
+            return;
 
         for (String task : oldData.getTasks()) {
-            if (!newData.getTasks().contains(task) && !newData.getCompletedTasks().contains(task)) {
+            if (!newData.getTasks().contains(task) &&
+                    !newData.getCompletedTasks().contains(task)) {
                 try {
                     newData.addTask(task);
                 } catch (IllegalStateException ignored) {}
@@ -633,7 +634,6 @@ public class MessageHandler {
                 } catch (Exception ignored) {}
             }
         }
-
         userDataMap.remove(oldUserId);
     }
 }

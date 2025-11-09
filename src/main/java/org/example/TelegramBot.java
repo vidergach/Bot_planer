@@ -59,6 +59,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (Exception e) {
             try {
+                e.printStackTrace();
                 execute(new SendMessage(chatId, "Ошибка: " + e.getMessage()));
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();
@@ -87,6 +88,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (Exception e) {
             try {
+                e.printStackTrace();
                 execute(new SendMessage(chatId, "Ошибка импорта: " + e.getMessage()));
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();
