@@ -20,6 +20,7 @@ import java.util.List;
 public class DiscordBot extends ListenerAdapter {
     private final String token;
     private final MessageHandler logic;
+    private final String PLATFORM_TYPE = "discord";
 
     public DiscordBot(String token, MessageHandler logic) {
         this.token = token;
@@ -56,7 +57,7 @@ public class DiscordBot extends ListenerAdapter {
                 return;
             }
             String command = convertDiscord(message);
-            MessageHandler.BotResponse response = logic.processUserInput(command, userId);
+            MessageHandler.BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
             if (response.hasFile()) {
                 channel.sendFiles(FileUpload.fromData(response.getFile(), response.getFileName()))
                         .setContent(response.getMessage())
@@ -72,19 +73,19 @@ public class DiscordBot extends ListenerAdapter {
     }
 
     private String convertDiscord(String message){
-        switch (message) {
-            case "Добавить задачу": return "/add";
-            case "Показать список задач": return "/tasks";
-            case "Список выполненных задач": return "/dTask";
-            case "Удалить": return "/delete";
-            case "Выполнено": return "/done";
-            case "Экспорт": return "/export";
-            case "Импорт": return "/import";
-            case "Помощь": return "/help";
-            case "Регистрация": return "/registration";
-            case "Войти в аккаунт": return "/integration";
-            default: return message;
-        }
+        return switch (message) {
+            case "Добавить задачу" -> "/add";
+            case "Показать список задач" -> "/tasks";
+            case "Список выполненных задач" -> "/dTask";
+            case "Удалить" -> "/delete";
+            case "Выполнено" -> "/done";
+            case "Экспорт" -> "/export";
+            case "Импорт" -> "/import";
+            case "Помощь" -> "/help";
+            case "Регистрация" -> "/registration";
+            case "Войти в аккаунт" -> "/integration";
+            default -> message;
+        };
     }
 
     /**
@@ -104,7 +105,7 @@ public class DiscordBot extends ListenerAdapter {
 
         fileAttachment.getProxy().download().thenAccept(inputStream -> {
             try {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                MessageHandler.BotResponse response = logic.processImport(inputStream, userId, PLATFORM_TYPE);
                 channel.sendMessage(response.getMessage()).queue();
             } catch (Exception e) {
                 channel.sendMessage("Ошибка при обработке файла: " + e.getMessage()).queue();

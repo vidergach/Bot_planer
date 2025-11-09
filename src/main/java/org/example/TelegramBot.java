@@ -15,6 +15,7 @@ import java.io.InputStream;
 public class TelegramBot extends TelegramLongPollingBot {
     private final MessageHandler logic;
     private final String botUsername;
+    private static final String PLATFORM_TYPE = "telegram";
 
     /**
      * Создаем новый экземпляр Telegram бота.
@@ -46,7 +47,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 String text = update.getMessage().getText();
 
                 String command = convertButton(text);
-                MessageHandler.BotResponse response = logic.processUserInput(command, userId);
+                MessageHandler.BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
 
                 SendMessage message = new SendMessage();
                 message.setChatId(chatId);
@@ -79,19 +80,19 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private String convertButton(String button) {
-        switch (button) {
-            case "\u2795 Добавить задачу": return "/add";
-            case "\uD83D\uDCDD Показать список задач": return "/tasks";
-            case "\u2705 Список выполненных задач": return "/dTask";
-            case "\u2718 Удалить": return "/delete";
-            case "\u2714 Выполнено": return "/done";
-            case "Экспорт": return "/export";
-            case "Импорт": return "/import";
-            case "Помощь": return "/help";
-            case "\uD83D\uDCDD Регистрация": return "/registration";
-            case "Войти в аккаунт": return "/integration";
-            default: return button;
-        }
+        return switch (button) {
+            case "\u2795 Добавить задачу" -> "/add";
+            case "\uD83D\uDCDD Показать список задач" -> "/tasks";
+            case "\u2705 Список выполненных задач" -> "/dTask";
+            case "\u2718 Удалить" -> "/delete";
+            case "\u2714 Выполнено" -> "/done";
+            case "Экспорт" -> "/export";
+            case "Импорт" -> "/import";
+            case "Помощь" -> "/help";
+            case "\uD83D\uDCDD Регистрация" -> "/registration";
+            case "Войти в аккаунт" -> "/integration";
+            default -> button;
+        };
     }
 
     /**
@@ -109,7 +110,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             java.io.File downloadedFile = downloadFile(file);
             try (InputStream inputStream = new java.io.FileInputStream(downloadedFile)) {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                MessageHandler.BotResponse response = logic.processImport(inputStream, userId, PLATFORM_TYPE);
                 execute(new SendMessage(chatId, response.getMessage()));
             }
 
