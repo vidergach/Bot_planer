@@ -1,30 +1,40 @@
 package org.example;
 
 import org.telegram.telegrambots.meta.TelegramBotsApi;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 /**
- * Главный класс приложения для запуска Telegram бота.
- * Инициализирует и регистрирует бота в Telegram API.
- *
- * @author Vika
- * @version 1.0
- * @since 2024
+ * Главный класс приложения для запуска Telegram и Discord ботов.
+ * Инициализирует и запускает обоих ботов параллельно.
  */
 public class BotApplication {
     /**
-     * Точка входа в приложение Telegram бота.
-     * Создает экземпляр бота, регистрирует его и запускает сессию для обработки сообщений.
-     *
-     * @param args аргументы командной строки
-     * @throws TelegramApiException если произошла ошибка при регистрации бота
+     * Основной метод приложения, запускающий Telegram и Discord ботов.
+     * Инициализирует ботов с использованием параметров из переменных окружения
      *
      */
-    public static void main(String[] args) throws TelegramApiException {
-        MyBot bot = new MyBot();
-        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-        botsApi.registerBot(bot);
-        System.out.println("Бот работает");
+    public static void main(String[] args) {
+        try {
+            TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+
+            String telegramBotName = System.getenv("BOT_USERNAME");
+            String telegramBotToken = System.getenv("BOT_TOKEN");
+            String discordToken = System.getenv("DISCORD_TOKEN");
+
+            MessageHandler messageHandler = new MessageHandler();
+
+            TelegramBot bot = new TelegramBot(telegramBotName, telegramBotToken, messageHandler);
+            botsApi.registerBot(bot);
+            System.out.println("Telegram бот запущен");
+
+            DiscordBot discordBot = new DiscordBot(discordToken, messageHandler);
+            discordBot.start();
+            System.out.println("Discord бот запущен");
+
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+            System.err.println("Ошибка при запуске Telegram бота: " + e.getMessage());
+        }
     }
 }
