@@ -7,50 +7,98 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Основной класс для обработки сообщений пользователя и управления задачами.
+ * Обеспечивает взаимодействие между пользовательским интерфейсом и системой хранения данных.
 
+ * @see DatabaseService
+ * @see FileWork
+ */
 public class MessageHandler {
     private final DatabaseService databaseService;
     private final Map<String, AuthState> authStates = new ConcurrentHashMap<>();
+    private final Map<String, Operation> operationStates = new ConcurrentHashMap<>();
     private final FileWork fileWork = new FileWork();
 
+    /**
+     * Конструктор по умолчанию, инициализирует сервис базы данных.
+     */
     public MessageHandler() {
         this.databaseService = new DatabaseService();
     }
 
+    /**
+     * Класс, представляющий ответ бота на запрос.
+     */
     public class BotResponse {
         private final String message;
         private final File file;
         private final String fileName;
 
+        /**
+         * Конструктор для создания текстового ответа.
+         *
+         * @param message текстовое сообщение
+         */
         public BotResponse(String message) {
             this.message = message;
             this.file = null;
             this.fileName = null;
         }
 
+        /**
+         * Конструктор для создания ответа с файлом.
+         *
+         * @param message текстовое сообщение
+         * @param file файл
+         * @param fileName имя файла
+         */
         public BotResponse(String message, File file, String fileName) {
             this.message = message;
             this.file = file;
             this.fileName = fileName;
         }
 
+        /**
+         * Возвращает текстовое сообщение ответа.
+         *
+         * @return текстовое сообщение
+         */
         public String getMessage() {
             return message;
         }
 
+        /**
+         * Возвращает файл ответа.
+         *
+         * @return файл для отправки
+         */
         public File getFile() {
             return file;
         }
 
+        /**
+         * Возвращает имя файла.
+         *
+         * @return имя файла
+         */
         public String getFileName() {
             return fileName;
         }
 
+        /**
+         * Проверяет, содержит ли ответ файл.
+         *
+         * @return true если ответ содержит файл, false в противном случае
+         */
         public boolean hasFile() {
             return file != null;
         }
     }
 
+    /**
+     * Внутренний класс для отслеживания состояния аутентификации пользователя.
+     */
     private class AuthState {
         String type;
         String username;
@@ -64,19 +112,38 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Внутренний класс для разбора команд пользователя.
+     */
     private class CommandParts {
         private final String command;
         private final String parameter;
 
+        /**
+         * Конструктор для разбора команды и параметра.
+         *
+         * @param command команда пользователя
+         * @param parameter параметр команды
+         */
         public CommandParts(String command, String parameter) {
             this.command = command;
             this.parameter = parameter;
         }
 
+        /**
+         * Возвращает команду.
+         *
+         * @return команда пользователя
+         */
         public String getCommand() {
             return command;
         }
 
+        /**
+         * Возвращает параметр команды.
+         *
+         * @return параметр команды
+         */
         public String getParameter() {
             return parameter;
         }
@@ -164,41 +231,151 @@ public class MessageHandler {
             - Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask
             """;
 
+    /**
+     * Внутренний класс для отслеживания состояния операции.
+     */
+    private class Operation {
+        String type;
+        Operation(String type) {
+            this.type = type;
+        }
+    }
+
+    /**
+     * Основной метод обработки пользовательского ввода.
+     *
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
     public BotResponse processUserInput(String userInput, String userId, String platformType) {
         System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
         try {
-            CommandParts parts = parseCommand(userInput);
-
-            if (isUserAuthenticated(userId, platformType)) {
-                return processCommand(parts.getCommand(), parts.getParameter(), userId, platformType);
+            if (operationStates.containsKey(userId)) {
+                return handleOperationStep(userId, userInput, platformType);
             }
 
             if (authStates.containsKey(userId)) {
                 return handleAuthStep(userId, userInput);
             }
 
-            String command = parts.getCommand();
-            if (command.equals("/registration") || command.equals("/integration")) {
-                return processAuthCommand(command, userId, platformType);
+            String[] parts = userInput.trim().split("\\s+", 2);
+            String command = parts[0];
+            String parameter = parts.length > 1 ? parts[1].trim() : "";
+
+            if (!isUserAuthenticated(userId, platformType)) {
+                if (command.equals("/registration") || command.equals("/integration")) {
+                    return startAuth(command.substring(1), userId, platformType);
+                }
+                return new BotResponse(WELCOME_MESSAGE);
             }
-            return new BotResponse(WELCOME_MESSAGE);
+            return processCommand(command, parameter,userId, platformType);
         } catch (Exception e) {
             e.printStackTrace();
             return new BotResponse("Произошла ошибка: " + e.getMessage());
         }
     }
 
-    private CommandParts parseCommand(String userInput) {
-        if (userInput.isBlank()) {
-            return new CommandParts("", "");
+    /**
+     * Обрабатывает операцию, требующую дополнительного ввода от пользователя.
+     *
+     * @param operation тип операции
+     * @param parameter параметр операции
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @param prompt сообщение для пользователя
+     * @return ответ бота
+     */
+    private BotResponse handleOperation(String operation, String parameter, String userId, String platformType, String prompt) {
+        if (parameter.isEmpty()) {
+            operationStates.put(userId, new Operation(operation));
+            return new BotResponse(prompt);
+        } else {
+            return executeOperation(operation, parameter, userId, platformType);
         }
-        String trimmedInput = userInput.trim();
-        String[] parts = trimmedInput.split("\\s+", 2);
-        String command = parts[0];
-        String parameter = parts.length > 1 ? parts[1].trim() : "";
-        return new CommandParts(command, parameter);
     }
 
+    /**
+     * Обрабатывает операции после получения ввода.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
+    private BotResponse handleOperationStep(String userId, String userInput, String platformType) {
+        Operation state = operationStates.get(userId);
+        operationStates.remove(userId);
+        return executeOperation(state.type, userInput.trim(), userId, platformType);
+    }
+
+    /**
+     * Выполняет указанную операцию.
+     *
+     * @param operation тип операции
+     * @param input ввод пользователя
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
+    private BotResponse executeOperation(String operation, String input, String userId, String platformType) {
+        try {
+            String internalUserId = databaseService.getUserIdByPlatform(userId);
+            if (internalUserId == null) {
+                return new BotResponse("Пользователь не авторизован");
+            }
+            return switch (operation) {
+                case "add" -> {
+                    databaseService.addTask(internalUserId, input);
+                    yield new BotResponse("Задача \"" + input + "\" добавлена!");
+                }
+                case "delete" -> {
+                    databaseService.deleteTask(internalUserId, input);
+                    yield new BotResponse("\uD83D\uDDD1\uFE0F Задача \"" + input + "\" удалена!");
+                }
+                case "done" -> {
+                    databaseService.markTaskDone(internalUserId, input);
+                    yield new BotResponse("✅ Задача \"" + input + "\" выполнена!");
+                }
+                case "export" -> {
+                    DatabaseService.TaskData taskData = databaseService.exportTasks(internalUserId);
+                    File exportFile = fileWork.export(taskData.getCurrentTasks(), taskData.getCompletedTasks(), input);
+                    yield new BotResponse("Ваши задачи экспортированы в файл: " + exportFile.getName(), exportFile, exportFile.getName());
+                }
+                default -> new BotResponse("Неизвестная операция");
+            };
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка " + getOperationError(operation) + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Возвращает ошибки для операции.
+     *
+     * @param operation тип операции
+     * @return описание ошибки
+     */
+    private String getOperationError(String operation) {
+        return switch (operation) {
+            case "add" -> "добавления задачи";
+            case "delete" -> "удаления задачи";
+            case "done" -> "выполнения задачи";
+            case "export" -> "экспорта";
+            default -> "операции";
+        };
+    }
+
+    /**
+     * Обрабатывает команду пользователя.
+     *
+     * @param command команда
+     * @param parameter параметр команды
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
     private BotResponse processCommand(String command, String parameter, String userId, String platformType) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
@@ -209,18 +386,16 @@ public class MessageHandler {
             return switch (command) {
                 case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
-                case "/add" -> handleAddTask(parameter, internalUserId);
+                case "/add" -> handleOperation("add", parameter, userId, platformType, "Введите задачу для добавления:\nНапример: Купить молоко");
                 case "/tasks" -> handleShowTasks(internalUserId);
-                case "/done" -> handleMarkTaskDone(parameter, internalUserId);
+                case "/done" -> handleOperation("done", parameter, userId, platformType, "Введите название задачи для отметки выполнения:\nНапример: Купить молоко");
                 case "/dTask" -> handleShowCompletedTasks(internalUserId);
-                case "/delete" -> handleDeleteTask(parameter, internalUserId);
+                case "/delete" -> handleOperation("delete", parameter, userId, platformType, "Введите название задачи для удаления:\nНапример: Купить молоко");
                 case "/registration" -> handleRegistration(userId, platformType);
                 case "/integration" -> handleIntegration(userId, platformType);
-                case "/export" -> handleExport(parameter, internalUserId);
+                case "/export" -> handleOperation("export", parameter, userId, platformType, "Напишите имя файла для экспорта\nНапример: 'list'");
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
-                default -> new BotResponse("""
-                        Неизвестная команда.
-                        Введите /help для просмотра доступных команд.""");
+                default -> new BotResponse("Неизвестная команда.\nВведите /help для просмотра доступных команд.");
             };
         } catch (Exception e) {
             e.printStackTrace();
@@ -228,6 +403,14 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает импорт задач из файла.
+     *
+     * @param inputStream поток ввода с файлом задач
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с результатом импорта
+     */
     public BotResponse processImport(InputStream inputStream, String userId, String platformType) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
@@ -266,23 +449,12 @@ public class MessageHandler {
         }
     }
 
-    private BotResponse handleAddTask(String parameter, String internalUserId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("""
-                    Укажите задачу после /add
-                    Например: /add Купить молоко""");
-        } else {
-            String taskText = parameter.trim();
-            try {
-                databaseService.addTask(internalUserId, taskText);
-                return new BotResponse("Задача \"" + taskText + "\" добавлена!");
-            } catch (Exception e) {
-                e.printStackTrace();
-                return new BotResponse("Ошибка добавления задачи: " + e.getMessage());
-            }
-        }
-    }
-
+    /**
+     * Обрабатывает текущие задачи пользователя.
+     *
+     * @param internalUserId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse handleShowTasks(String internalUserId) {
         try {
             List<String> tasks = databaseService.getCurrentTasks(internalUserId);
@@ -300,23 +472,12 @@ public class MessageHandler {
         }
     }
 
-    private BotResponse handleMarkTaskDone(String parameter, String internalUserId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("""
-                    Введите название задачи для отметки выполнения:
-                    Например: Купить молоко""");
-        } else {
-            String taskText = parameter.trim();
-            try {
-                databaseService.markTaskDone(internalUserId, taskText);
-                return new BotResponse("✅ Задача \"" + taskText + "\" выполнена!");
-            } catch (Exception e) {
-                e.printStackTrace();
-                return new BotResponse("Ошибка в выполнении задачи: " + e.getMessage());
-            }
-        }
-    }
-
+    /**
+     * Обрабатывает выполненные задачи пользователя.
+     *
+     * @param internalUserId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse handleShowCompletedTasks(String internalUserId) {
         try {
             List<String> completedTasks = databaseService.getCompletedTasks(internalUserId);
@@ -334,23 +495,28 @@ public class MessageHandler {
         }
     }
 
-    private BotResponse handleDeleteTask(String parameter, String internalUserId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("""
-                    Введите название задачи для удаления:
-                    Например: Купить молоко""");
-        } else {
-            String taskText = parameter.trim();
-            try {
-                databaseService.deleteTask(internalUserId, taskText);
-                return new BotResponse("\uD83D\uDDD1\uFE0F Задача \"" + taskText + "\" удалена!");
-            } catch (Exception e) {
-                e.printStackTrace();
-                return new BotResponse("Ошибка в удалении задачи: " + e.getMessage());
-            }
-        }
+    /**
+     * Начинает процесс аутентификации пользователя.
+     *
+     * @param type тип аутентификации
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
+    private BotResponse startAuth(String type, String userId, String platformType) {
+        authStates.put(userId, new AuthState(type, platformType));
+        return new BotResponse(type.equals("registration") ?
+                "📝 Регистрация нового пользователя\nВведите логин:" :
+                "Вход в аккаунт\nВведите логин:");
     }
 
+    /**
+     * Обрабатывает команду регистрации.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
     private BotResponse handleRegistration(String userId, String platformType) {
         authStates.put(userId, new AuthState("registration", platformType));
         return new BotResponse("""
@@ -359,6 +525,13 @@ public class MessageHandler {
                 """);
     }
 
+    /**
+     * Обрабатывает команду входа в аккаунт.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
     private BotResponse handleIntegration(String userId, String platformType) {
         authStates.put(userId, new AuthState("integration", platformType));
         return new BotResponse("""
@@ -367,14 +540,13 @@ public class MessageHandler {
                 """);
     }
 
-    private BotResponse processAuthCommand(String command,String userId, String platformType) {
-        return switch (command) {
-            case "/registration" -> handleRegistration(userId, platformType);
-            case "/integration" -> handleIntegration(userId, platformType);
-            default -> new BotResponse(WELCOME_MESSAGE);
-        };
-    }
-
+    /**
+     * Обрабатывает шаг аутентификации.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя
+     * @return ответ бота
+     */
     private BotResponse handleAuthStep(String userId, String userInput) {
         AuthState state = authStates.get(userId);
 
@@ -388,24 +560,14 @@ public class MessageHandler {
         return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
     }
 
-    private BotResponse handleExport(String filename, String internalUserId) {
-        if (filename.isEmpty()) {
-            return new BotResponse("""
-                    Напишите имя файла для экспорта
-                    Например: 'list'""");
-        }
-        try {
-            DatabaseService.TaskData taskData = databaseService.exportTasks(internalUserId);
-            File exportFile = fileWork.export(taskData.getCurrentTasks(),
-                    taskData.getCompletedTasks(), filename.trim());
-            return new BotResponse("Ваши задачи экспортированы в файл: "
-                    + exportFile.getName(), exportFile, exportFile.getName());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new BotResponse("Ошибка экспорта: " + e.getMessage());
-        }
-    }
-
+    /**
+     * Обрабатывает шаг ввода логина при аутентификации.
+     *
+     * @param state состояние аутентификации
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
         if (userInput.trim().isEmpty()) {
             return new BotResponse("""
@@ -441,42 +603,50 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает шаг ввода пароля при аутентификации.
+     *
+     * @param state состояние аутентификации
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота с результатом аутентификации
+     */
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
         if (password.isEmpty()) {
             return new BotResponse("""
-                    Пароль не может быть пустым.
-                    Введите пароль:
-                    """);
+                Пароль не может быть пустым.
+                Введите пароль:
+                """);
         }
         try {
             if ("registration".equals(state.type)) {
                 if (databaseService.registerUser(state.username, password)) {
                     databaseService.authenticateUser(state.username, password, state.platformType, userId);
                     authStates.remove(userId);
-                    return new BotResponse("""
-                                ✅ Регистрация завершена успешно!
-                                Добро пожаловать, %s!
-                                %s""".formatted(state.username, START_MESSAGE));
+                    return new BotResponse(String.format("""
+                        ✅ Регистрация завершена успешно!
+                        Добро пожаловать, %s!
+                        %s""", state.username, START_MESSAGE));
                 } else {
                     authStates.remove(userId);
                     return new BotResponse("""
-                            Ошибка регистрации.
-                            Попробуйте снова: /registration""");
+                        Ошибка регистрации.
+                        Попробуйте снова: /registration""");
                 }
             } else {
                 if (databaseService.authenticateUser(state.username, password, state.platformType, userId)) {
                     authStates.remove(userId);
-                    return new BotResponse("""
-                                ✅ Вход выполнен успешно!
-                                Добро пожаловать обратно, %s
-
-                                %s""".formatted(state.username, START_MESSAGE));
+                    return new BotResponse(String.format("""
+                        ✅ Вход выполнен успешно!
+                        Добро пожаловать обратно, %s
+                        
+                        %s""", state.username, START_MESSAGE));
                 } else {
                     authStates.remove(userId);
                     return new BotResponse("""
-                            Неверный пароль.
-                            Попробуйте снова: /integration""");
+                        Неверный пароль.
+                        Попробуйте снова: /integration""");
                 }
             }
         } catch (Exception e) {
@@ -486,6 +656,13 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Проверяет, аутентифицирован ли пользователь.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return true если пользователь аутентифицирован, false в противном случае
+     */
     private boolean isUserAuthenticated(String userId, String platformType) {
         try {
             return databaseService.getUsername(platformType, userId) != null;

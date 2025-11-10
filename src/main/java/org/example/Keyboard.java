@@ -5,7 +5,16 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Класс для создания и настройки клавиатуры Telegram бота.
+ */
 public class Keyboard {
+
+    /**
+     * Создает и возвращает клавиатуру авторизации с основными командами бота.
+     *
+     * @return объект с кнопками команд
+     */
     public static ReplyKeyboardMarkup authorizationKeyboard() {
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
