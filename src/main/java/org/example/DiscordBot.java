@@ -105,7 +105,7 @@ public class DiscordBot extends ListenerAdapter {
 
         fileAttachment.getProxy().download().thenAccept(inputStream -> {
             try {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId, PLATFORM_TYPE);
+                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
                 channel.sendMessage(response.getMessage()).queue();
             } catch (Exception e) {
                 channel.sendMessage("Ошибка при обработке файла: " + e.getMessage()).queue();
