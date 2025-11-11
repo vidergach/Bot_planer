@@ -110,7 +110,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             java.io.File downloadedFile = downloadFile(file);
             try (InputStream inputStream = new java.io.FileInputStream(downloadedFile)) {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId, PLATFORM_TYPE);
+                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
                 execute(new SendMessage(chatId, response.getMessage()));
             }
 

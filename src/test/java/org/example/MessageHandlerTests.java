@@ -286,7 +286,7 @@ public class MessageHandlerTests {
         Files.write(testFile.toPath(), jsonContent.getBytes());
 
         try (FileInputStream inputStream = new FileInputStream(testFile)) {
-            MessageHandler.BotResponse response = messageHandler.processImport(inputStream, userId, "telegram");
+            MessageHandler.BotResponse response = messageHandler.processImport(inputStream, userId);
             Assertions.assertTrue(response.getMessage().contains("успешно") ||
                     response.getMessage().contains("Импорт завершен"));
         }

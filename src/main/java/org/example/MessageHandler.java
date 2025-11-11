@@ -112,43 +112,6 @@ public class MessageHandler {
         }
     }
 
-    /**
-     * Внутренний класс для разбора команд пользователя.
-     */
-    private class CommandParts {
-        private final String command;
-        private final String parameter;
-
-        /**
-         * Конструктор для разбора команды и параметра.
-         *
-         * @param command команда пользователя
-         * @param parameter параметр команды
-         */
-        public CommandParts(String command, String parameter) {
-            this.command = command;
-            this.parameter = parameter;
-        }
-
-        /**
-         * Возвращает команду.
-         *
-         * @return команда пользователя
-         */
-        public String getCommand() {
-            return command;
-        }
-
-        /**
-         * Возвращает параметр команды.
-         *
-         * @return параметр команды
-         */
-        public String getParameter() {
-            return parameter;
-        }
-    }
-
     private static final String WELCOME_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
 
@@ -253,7 +216,7 @@ public class MessageHandler {
         System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
         try {
             if (operationStates.containsKey(userId)) {
-                return handleOperationStep(userId, userInput, platformType);
+                return handleOperationStep(userId, userInput);
             }
 
             if (authStates.containsKey(userId)) {
@@ -283,16 +246,15 @@ public class MessageHandler {
      * @param operation тип операции
      * @param parameter параметр операции
      * @param userId идентификатор пользователя
-     * @param platformType тип платформы
      * @param prompt сообщение для пользователя
      * @return ответ бота
      */
-    private BotResponse handleOperation(String operation, String parameter, String userId, String platformType, String prompt) {
+    private BotResponse handleOperation(String operation, String parameter, String userId, String prompt) {
         if (parameter.isEmpty()) {
             operationStates.put(userId, new Operation(operation));
             return new BotResponse(prompt);
         } else {
-            return executeOperation(operation, parameter, userId, platformType);
+            return executeOperation(operation, parameter, userId);
         }
     }
 
@@ -301,13 +263,12 @@ public class MessageHandler {
      *
      * @param userId идентификатор пользователя
      * @param userInput ввод пользователя
-     * @param platformType тип платформы
      * @return ответ бота
      */
-    private BotResponse handleOperationStep(String userId, String userInput, String platformType) {
+    private BotResponse handleOperationStep(String userId, String userInput) {
         Operation state = operationStates.get(userId);
         operationStates.remove(userId);
-        return executeOperation(state.type, userInput.trim(), userId, platformType);
+        return executeOperation(state.type, userInput.trim(), userId);
     }
 
     /**
@@ -316,10 +277,9 @@ public class MessageHandler {
      * @param operation тип операции
      * @param input ввод пользователя
      * @param userId идентификатор пользователя
-     * @param platformType тип платформы
      * @return ответ бота
      */
-    private BotResponse executeOperation(String operation, String input, String userId, String platformType) {
+    private BotResponse executeOperation(String operation, String input, String userId) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
             if (internalUserId == null) {
@@ -386,14 +346,14 @@ public class MessageHandler {
             return switch (command) {
                 case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
-                case "/add" -> handleOperation("add", parameter, userId, platformType, "Введите задачу для добавления:\nНапример: Купить молоко");
+                case "/add" -> handleOperation("add", parameter, userId, "Введите задачу для добавления:\nНапример: Купить молоко");
                 case "/tasks" -> handleShowTasks(internalUserId);
-                case "/done" -> handleOperation("done", parameter, userId, platformType, "Введите название задачи для отметки выполнения:\nНапример: Купить молоко");
+                case "/done" -> handleOperation("done", parameter, userId, "Введите название задачи для отметки выполнения:\nНапример: Купить молоко");
                 case "/dTask" -> handleShowCompletedTasks(internalUserId);
-                case "/delete" -> handleOperation("delete", parameter, userId, platformType, "Введите название задачи для удаления:\nНапример: Купить молоко");
+                case "/delete" -> handleOperation("delete", parameter, userId, "Введите название задачи для удаления:\nНапример: Купить молоко");
                 case "/registration" -> handleRegistration(userId, platformType);
                 case "/integration" -> handleIntegration(userId, platformType);
-                case "/export" -> handleOperation("export", parameter, userId, platformType, "Напишите имя файла для экспорта\nНапример: 'list'");
+                case "/export" -> handleOperation("export", parameter, userId, "Напишите имя файла для экспорта\nНапример: 'list'");
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
                 default -> new BotResponse("Неизвестная команда.\nВведите /help для просмотра доступных команд.");
             };
@@ -408,10 +368,9 @@ public class MessageHandler {
      *
      * @param inputStream поток ввода с файлом задач
      * @param userId идентификатор пользователя
-     * @param platformType тип платформы
      * @return ответ бота с результатом импорта
      */
-    public BotResponse processImport(InputStream inputStream, String userId, String platformType) {
+    public BotResponse processImport(InputStream inputStream, String userId) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
             if (internalUserId == null) {
