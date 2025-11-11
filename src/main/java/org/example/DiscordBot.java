@@ -41,10 +41,10 @@ public class DiscordBot extends ListenerAdapter {
             e.printStackTrace();
         }
     }
-
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        if (event.getAuthor().isBot()) return;
+        if (event.getAuthor().isBot())
+            return;
 
         String message = event.getMessage().getContentRaw();
         String userId = event.getAuthor().getId();
@@ -52,7 +52,7 @@ public class DiscordBot extends ListenerAdapter {
 
         try {
             if (!event.getMessage().getAttachments().isEmpty()) {
-                handleImportAttachment(event, userId, channel);
+                handleImport_Discord(event, userId, channel);
                 return;
             }
             MessageHandler.BotResponse response = logic.processUserInput(message, userId);
@@ -81,7 +81,7 @@ public class DiscordBot extends ListenerAdapter {
      * @see Message.Attachment
      * @see InputStream
      */
-    private void handleImportAttachment(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
+    private void handleImport_Discord(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
         List<Message.Attachment> attachments = event.getMessage().getAttachments();
         Message.Attachment fileAttachment = attachments.get(0);
 
