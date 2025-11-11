@@ -174,7 +174,6 @@ public class MessageHandler {
      */
     public BotResponse processUserInput(String userInput, String userId) {
         System.out.println("сообщение: " + userInput + " от: " + userId);
-
         try {
             if (!isUserAuthenticated(userId)) {
                 if (!authStates.containsKey(userId)) {
@@ -191,7 +190,6 @@ public class MessageHandler {
                     return handleAuthStep(userId, userInput);
                 }
             }
-            UserData userData = getUserDataForUserId(userId);
             CommandParts parts = parseCommand(userInput);
             String command = parts.getCommand();
             String parameter = parts.getParameter();
@@ -226,23 +224,18 @@ public class MessageHandler {
         try {
             UserData userData = getUserData(userId);
             FileWork.FileData result = fileWork.importData(inputStream);
-            int addedTasks = 0;
-            int addedCompleted = 0;
             for (String task : result.current_tasks()) {
                 if (!userData.getTasks().contains(task) && !userData.getCompletedTasks().contains(task)) {
                     userData.addTask(task);
-                    addedTasks++;
                 }
             }
             for (String task : result.completed_tasks()) {
                 if (!userData.getCompletedTasks().contains(task)) {
                     if (userData.getTasks().contains(task)) {
                         userData.markTaskDone(task);
-                        addedCompleted++;
                     } else if (!userData.getCompletedTasks().contains(task)) {
                         userData.addTask(task);
                         userData.markTaskDone(task);
-                        addedCompleted++;
                     }
                 }
             }
@@ -254,19 +247,6 @@ public class MessageHandler {
             e.printStackTrace();
             return new BotResponse("Ошибка при импорте: " + e.getMessage());
         }
-    }
-
-    /**
-     * Получает или создает данные пользователя по идентификатору.
-     *
-     * @param userId идентификатор пользователя
-     * @return объект UserData пользователя
-     */
-    private UserData getUserDataForUserId(String userId) {
-        if (!userDataMap.containsKey(userId)) {
-            userDataMap.put(userId, new UserData());
-        }
-        return userDataMap.get(userId);
     }
 
     /**
@@ -433,7 +413,7 @@ public class MessageHandler {
         }
         try {
             UserData userData = getUserData(userId);
-            File exportFile = fileWork.export(userId, userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
+            File exportFile = fileWork.export(userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
             return new BotResponse("Ваши задачи экспортированы в файл: "
                     + exportFile.getName(), exportFile, exportFile.getName());
         } catch (Exception e) {
