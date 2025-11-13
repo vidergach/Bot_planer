@@ -36,6 +36,9 @@ public class MessageHandlerTests {
         }
     }
 
+    /**
+     * Очищает базу данных для изоляции тестов.
+     */
     private void clearDatabase() {
         try (Connection conn = DriverManager.getConnection(TEST_DB_URL);
              Statement stmt = conn.createStatement()) {
@@ -52,12 +55,21 @@ public class MessageHandlerTests {
         }
     }
 
+    /**
+     * Регистрирует тестового пользователя в системе.
+     *
+     * @param userId идентификатор пользователя для регистрации
+     */
     private void registerTestUser(String userId) {
         messageHandler.processUserInput("/registration", userId, PLATFORM_TYPE);
         messageHandler.processUserInput("test_user_" + userId, userId, PLATFORM_TYPE);
         messageHandler.processUserInput("test_password", userId, PLATFORM_TYPE);
     }
 
+    /**
+     * Тестирует добавление новой задачи.
+     * Проверяет корректность добавления и отображения задачи в списке.
+     */
     @Test
     void testAddTask() {
         String userId = "user1";
@@ -73,6 +85,10 @@ public class MessageHandlerTests {
         """, tasksResponse.getMessage());
     }
 
+    /**
+     * Тестирует добавление задачи без названия.
+     * Проверяет сообщение от бота.
+     */
     @Test
     void testAddEmptyTask() {
         String userId = "user2";
@@ -84,6 +100,10 @@ public class MessageHandlerTests {
                                 Например: Купить молоко""", response.getMessage());
     }
 
+    /**
+     * Тестирует удаление задачи без названия.
+     * Проверяет сообщение от бота.
+     */
     @Test
     void testDeleteEmptyTask() {
         String userId = "user3";
@@ -95,6 +115,10 @@ public class MessageHandlerTests {
         Например: Купить молоко""", response.getMessage());
     }
 
+    /**
+     * Тестирует команду выполнения без указания задачи.
+     * Проверяет сообщение от бота.
+     */
     @Test
     void testMarkEmptyTaskDone() {
         String userId = "user4";
@@ -106,6 +130,10 @@ public class MessageHandlerTests {
         Например: Купить молоко""", response.getMessage());
     }
 
+    /**
+     * Тестирует добавление дублирующихся задач.
+     * Проверяет, что задача с одинаковым названием добавляется только один раз.
+     */
     @Test
     void testAddExistingTask() {
         String userId = "user123";
@@ -124,6 +152,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals(1, count);
     }
 
+    /**
+     * Тестирует пустой списка задач.
+     * Проверяет сообщение о пустом списке.
+     */
     @Test
     void testShowEmptyTasks() {
         String userId = "user6";
@@ -133,6 +165,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("📝 Список задач пуст!", response.getMessage());
     }
 
+    /**
+     * Тестирует список с несколькими задачами.
+     * Проверяет вывод и нумерацию задач.
+     */
     @Test
     void testShowTasks() {
         String userId = "user7";
@@ -149,6 +185,10 @@ public class MessageHandlerTests {
         """, tasksResponse.getMessage());
     }
 
+    /**
+     * Тестирует удаление существующей задачи.
+     * Проверяет удаление и обновление списка задач.
+     */
     @Test
     void testDeleteTask() {
         String userId = "user8";
@@ -162,6 +202,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("📝 Список задач пуст!", tasks_response.getMessage());
     }
 
+    /**
+     * Тестирует отметку задачи как выполненной.
+     * Проверяет перемещение задачи в список выполненных.
+     */
     @Test
     void testMarkTaskDone() {
         String userId = "user9";
@@ -175,6 +219,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("✅ Выполненные задачи:\n1. Полить цветы\n", dTaskResponse.getMessage());
     }
 
+    /**
+     * Тестирует пустой список выполненных задач.
+     * Проверяет сообщение о пустом списке.
+     */
     @Test
     void testShowEmptyCompletedTasks() {
         String userId = "user10";
@@ -184,6 +232,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("✅ Список выполненных задач пуст!", response.getMessage());
     }
 
+    /**
+     * Тестирует список выполненных задач.
+     * Проверяет вывод выполненных задач.
+     */
     @Test
     void testShowCompletedTasks() {
         String userId = "user11";
@@ -196,6 +248,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("✅ Выполненные задачи:\n1. Полить цветы\n", dTaskResponse.getMessage());
     }
 
+    /**
+     * Тестирует экспорт без имени файла.
+     * Проверяет запрос имени файла от бота.
+     */
     @Test
     void testExportWithoutFilename() {
         String userId = "user12";
@@ -205,6 +261,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("Напишите имя файла для экспорта\nНапример: 'list'", exportResponse.getMessage());
     }
 
+    /**
+     * Тестирует импорт задач.
+     * Проверяет запрос файла от бота.
+     */
     @Test
     void testImportCommand_FileRequest() {
         String userId = "user13";
@@ -214,6 +274,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("Для импорта отправьте JSON файл с задачами", response.getMessage());
     }
 
+    /**
+     * Тестирует неизвестную команду.
+     * Проверяет сообщение об ошибке и о помощи.
+     */
     @Test
     void testUnknownCommand() {
         String userId = "user14";
@@ -226,6 +290,10 @@ public class MessageHandlerTests {
                         """, response.getMessage());
     }
 
+    /**
+     * Тестирует процесс регистрации нового пользователя.
+     * Проверяет все шаги регистрации и работу с задачами.
+     */
     @Test
     void testRegistrationProcess() {
         String newUserId = "user15";
@@ -263,6 +331,10 @@ public class MessageHandlerTests {
         Assertions.assertEquals("Задача \"Новая задача\" добавлена!", response.getMessage());
     }
 
+    /**
+     * Тестирует неавторизованного пользователя.
+     * Проверяет запрос авторизации при попытке использования бота.
+     */
     @Test
     void testUnauthenticatedUser() {
         String newUserId = "user16";
@@ -279,6 +351,10 @@ public class MessageHandlerTests {
             Assertions.assertEquals(expectedMessage, response.getMessage());
         }
 
+        /**
+         * Тестирует предотвращение регистрации с дублирующимся логином.
+         * Проверяет сообщение об ошибке при повторной регистрации.
+        */
         @Test
         void testDuplicateRegistration() {
             String firstUserId = "user17";
@@ -296,6 +372,10 @@ public class MessageHandlerTests {
                     Используйте другой логин или войдите с помощью /integration.""", response.getMessage());
         }
 
+        /**
+         * Тестирует вход с несуществующим логином.
+         * Проверяет сообщение об ошибке.
+         */
         @Test
         void testIntegrationWithWrongUsername() {
             String userId = "user19";
@@ -308,6 +388,10 @@ public class MessageHandlerTests {
                     """, step2.getMessage());
         }
 
+        /**
+        * Тестирует вход с неверным паролем.
+         * Проверяет сообщение об ошибке аутентификации.
+        */
         @Test
         void testIntegrationWithWrongPassword() {
             String regUserId = "user20";
