@@ -15,7 +15,6 @@ import java.io.InputStream;
 public class TelegramBot extends TelegramLongPollingBot {
     private final MessageHandler logic;
     private final String botUsername;
-    private static final String PLATFORM_TYPE = "telegram";
 
     /**
      * Создаем новый экземпляр Telegram бота.
@@ -47,6 +46,7 @@ public class TelegramBot extends TelegramLongPollingBot {
                 String text = update.getMessage().getText();
 
                 String command = convertButton(text);
+                String PLATFORM_TYPE = "telegram";
                 MessageHandler.BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
 
                 SendMessage message = new SendMessage();
