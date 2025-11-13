@@ -28,6 +28,13 @@ public class MessageHandler {
     }
 
     /**
+     * Конструктор по умолчанию для тестирования
+     */
+    public MessageHandler(DatabaseService databaseService) {
+        this.databaseService = databaseService;
+    }
+
+    /**
      * Класс, представляющий ответ бота на запрос.
      */
     public class BotResponse {
@@ -229,7 +236,11 @@ public class MessageHandler {
 
             if (!isUserAuthenticated(userId, platformType)) {
                 if (command.equals("/registration") || command.equals("/integration")) {
-                    return startAuth(command.substring(1), userId, platformType);
+                    if (command.equals("/registration")) {
+                        return handleRegistration(userId, platformType);
+                    } else {
+                        return handleIntegration(userId, platformType);
+                    }
                 }
                 return new BotResponse(WELCOME_MESSAGE);
             }
@@ -292,7 +303,7 @@ public class MessageHandler {
                 }
                 case "delete" -> {
                     databaseService.deleteTask(internalUserId, input);
-                    yield new BotResponse("\uD83D\uDDD1\uFE0F Задача \"" + input + "\" удалена!");
+                    yield new BotResponse("🗑️ Задача \"" + input + "\" удалена!");
                 }
                 case "done" -> {
                     databaseService.markTaskDone(internalUserId, input);
@@ -303,7 +314,9 @@ public class MessageHandler {
                     File exportFile = fileWork.export(taskData.getCurrentTasks(), taskData.getCompletedTasks(), input);
                     yield new BotResponse("Ваши задачи экспортированы в файл: " + exportFile.getName(), exportFile, exportFile.getName());
                 }
-                default -> new BotResponse("Неизвестная операция");
+                default -> new BotResponse("""
+                        Неизвестная команда.
+                        Введите /help для просмотра доступных команд.""");
             };
         } catch (Exception e) {
             e.printStackTrace();
@@ -342,20 +355,34 @@ public class MessageHandler {
             if (internalUserId == null) {
                 return new BotResponse("Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.");
             }
-
             return switch (command) {
                 case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
-                case "/add" -> handleOperation("add", parameter, userId, "Введите задачу для добавления:\nНапример: Купить молоко");
+                case "/add" -> handleOperation("add", parameter, userId,
+                        """
+                                Введите задачу для добавления:
+                                Например: Купить молоко""");
                 case "/tasks" -> handleShowTasks(internalUserId);
-                case "/done" -> handleOperation("done", parameter, userId, "Введите название задачи для отметки выполнения:\nНапример: Купить молоко");
+                case "/done" -> handleOperation("done", parameter, userId,
+                        """
+                                Введите название задачи для отметки выполнения:
+                                Например: Купить молоко""");
                 case "/dTask" -> handleShowCompletedTasks(internalUserId);
-                case "/delete" -> handleOperation("delete", parameter, userId, "Введите название задачи для удаления:\nНапример: Купить молоко");
+                case "/delete" -> handleOperation("delete", parameter, userId,
+                        """
+                                Введите название задачи для удаления:
+                                Например: Купить молоко""");
                 case "/registration" -> handleRegistration(userId, platformType);
                 case "/integration" -> handleIntegration(userId, platformType);
-                case "/export" -> handleOperation("export", parameter, userId, "Напишите имя файла для экспорта\nНапример: 'list'");
+                case "/export" -> handleOperation("export", parameter, userId,
+                        """
+                                Напишите имя файла для экспорта
+                                Например: 'list'""");
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
-                default -> new BotResponse("Неизвестная команда.\nВведите /help для просмотра доступных команд.");
+                default -> new BotResponse("""
+                                        Неизвестная команда.
+                                        Введите /help для просмотра доступных команд.
+                                        """);
             };
         } catch (Exception e) {
             e.printStackTrace();
@@ -377,27 +404,20 @@ public class MessageHandler {
                 return new BotResponse("Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.");
             }
             FileWork.FileData importedData = fileWork.importData(inputStream);
-            int addedCurrentTasks = 0;
-            int addedCompletedTasks = 0;
-
             for (String task : importedData.current_tasks()) {
                 try {
                     databaseService.addTask(internalUserId, task);
-                    addedCurrentTasks++;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-
             for (String task : importedData.completed_tasks()) {
                 try {
                     databaseService.markTaskDone(internalUserId, task);
-                    addedCompletedTasks++;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-
             return new BotResponse("""
                     Импорт завершен успешно!
                     Можете проверить списки с помощью команд /tasks и /dTask
@@ -452,21 +472,6 @@ public class MessageHandler {
             e.printStackTrace();
             return new BotResponse("Ошибка при получении выполненных задач: " + e.getMessage());
         }
-    }
-
-    /**
-     * Начинает процесс аутентификации пользователя.
-     *
-     * @param type тип аутентификации
-     * @param userId идентификатор пользователя
-     * @param platformType тип платформы
-     * @return ответ бота
-     */
-    private BotResponse startAuth(String type, String userId, String platformType) {
-        authStates.put(userId, new AuthState(type, platformType));
-        return new BotResponse(type.equals("registration") ?
-                "📝 Регистрация нового пользователя\nВведите логин:" :
-                "Вход в аккаунт\nВведите логин:");
     }
 
     /**
@@ -603,9 +608,7 @@ public class MessageHandler {
                         %s""", state.username, START_MESSAGE));
                 } else {
                     authStates.remove(userId);
-                    return new BotResponse("""
-                        Неверный пароль.
-                        Попробуйте снова: /integration""");
+                    return new BotResponse("Неверный пароль. Попробуйте снова.");
                 }
             }
         } catch (Exception e) {

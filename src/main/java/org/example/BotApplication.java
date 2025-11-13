@@ -33,8 +33,8 @@ public class BotApplication {
             System.out.println("Discord бот запущен");
 
         } catch (TelegramApiException e) {
-            e.printStackTrace();
             System.err.println("Ошибка при запуске Telegram бота: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

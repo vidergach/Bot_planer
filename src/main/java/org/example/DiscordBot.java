@@ -20,7 +20,6 @@ import java.util.List;
 public class DiscordBot extends ListenerAdapter {
     private final String token;
     private final MessageHandler logic;
-    private final String PLATFORM_TYPE = "discord";
 
     public DiscordBot(String token, MessageHandler logic) {
         this.token = token;
@@ -53,11 +52,11 @@ public class DiscordBot extends ListenerAdapter {
 
         try {
             if (!event.getMessage().getAttachments().isEmpty()) {
-                handleImportAttachment(event, userId, channel);
+                handleImport_Discord(event, userId, channel);
                 return;
             }
-            String command = convertDiscord(message);
-            MessageHandler.BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
+            String PLATFORM_TYPE = "discord";
+            MessageHandler.BotResponse response = logic.processUserInput(message, userId, PLATFORM_TYPE);
             if (response.hasFile()) {
                 channel.sendFiles(FileUpload.fromData(response.getFile(), response.getFileName()))
                         .setContent(response.getMessage())
@@ -65,27 +64,10 @@ public class DiscordBot extends ListenerAdapter {
             } else {
                 channel.sendMessage(response.getMessage()).queue();
             }
-
         } catch (Exception e) {
             channel.sendMessage("Ошибка: " + e.getMessage()).queue();
             e.printStackTrace();
         }
-    }
-
-    private String convertDiscord(String message){
-        return switch (message) {
-            case "Добавить задачу" -> "/add";
-            case "Показать список задач" -> "/tasks";
-            case "Список выполненных задач" -> "/dTask";
-            case "Удалить" -> "/delete";
-            case "Выполнено" -> "/done";
-            case "Экспорт" -> "/export";
-            case "Импорт" -> "/import";
-            case "Помощь" -> "/help";
-            case "Регистрация" -> "/registration";
-            case "Войти в аккаунт" -> "/integration";
-            default -> message;
-        };
     }
 
     /**
@@ -99,7 +81,7 @@ public class DiscordBot extends ListenerAdapter {
      * @see Message.Attachment
      * @see InputStream
      */
-    private void handleImportAttachment(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
+    private void handleImport_Discord(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
         List<Message.Attachment> attachments = event.getMessage().getAttachments();
         Message.Attachment fileAttachment = attachments.get(0);
 
