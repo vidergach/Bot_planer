@@ -38,13 +38,13 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         try {
             if (update.getMessage().hasDocument()) {
-                handleImport_Telegram(chatId, userId, update);
+                handleImport(chatId, userId, update);
                 return;
             }
 
             if (update.getMessage().hasText()) {
                 String text = update.getMessage().getText();
-                MessageHandler.BotResponse response = logic.processUserInput(text, userId);
+                BotResponse response = logic.processUserInput(text, userId);
 
                 if (response.hasFile()) {
                     SendDocument document = new SendDocument();
@@ -74,7 +74,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param userId идентификатор пользователя для задач
      * @param update объект обновления с информацией о файле
      */
-    private void handleImport_Telegram(String chatId, String userId, Update update) {
+    private void handleImport(String chatId, String userId, Update update) {
         try {
             String fileId = update.getMessage().getDocument().getFileId();
             GetFile getFile = new GetFile(fileId);
@@ -82,7 +82,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             java.io.File downloadedFile = downloadFile(file);
             try (InputStream inputStream = new java.io.FileInputStream(downloadedFile)) {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                BotResponse response = logic.processImport(inputStream, userId);
                 execute(new SendMessage(chatId, response.getMessage()));
             }
 

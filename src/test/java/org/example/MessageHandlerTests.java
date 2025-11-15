@@ -40,9 +40,9 @@ public class MessageHandlerTests {
      */
     @Test
     void testAddTask() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
+        BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
         Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", response.getMessage());
-        MessageHandler.BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
         Assertions.assertEquals("""
         📝 Ваши задачи:
         1. Полить цветы
@@ -54,7 +54,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testAddEmptyTask() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/add", "user123");
+        BotResponse response = messageHandler.processUserInput("/add", "user123");
         Assertions.assertEquals("Укажите задачу после /add\nНапример: /add Купить молоко", response.getMessage());
     }
 
@@ -63,7 +63,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testDeleteEmptyTask() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/delete", "user123");
+        BotResponse response = messageHandler.processUserInput("/delete", "user123");
         Assertions.assertEquals("Укажите задачу после /delete\nНапример: /delete Купить молоко", response.getMessage());
     }
 
@@ -72,7 +72,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testMarkEmptyTaskDone() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/done", "user123");
+        BotResponse response = messageHandler.processUserInput("/done", "user123");
         Assertions.assertEquals("Укажите задачу после /done\nНапример: /done Купить молоко", response.getMessage());
     }
 
@@ -82,10 +82,10 @@ public class MessageHandlerTests {
     @Test
     void testAddExistingTask() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
+        BotResponse response = messageHandler.processUserInput("/add Полить цветы", "user123");
         Assertions.assertEquals("Задача \"Полить цветы\" уже есть в списке!", response.getMessage());
 
-        MessageHandler.BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
         String tasksMessage = tasks_response.getMessage();
         int count = 0;
         String[] lines = tasksMessage.split("\n");
@@ -102,7 +102,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testShowEmptyTasks() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse response = messageHandler.processUserInput("/tasks", "user123");
         Assertions.assertEquals("📝 Список задач пуст!", response.getMessage());
     }
 
@@ -113,7 +113,7 @@ public class MessageHandlerTests {
     void testShowTasks() {
         messageHandler.processUserInput("/add Задача 1", "user123");
         messageHandler.processUserInput("/add Задача 2", "user123");
-        MessageHandler.BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
 
         Assertions.assertEquals("""
         📝 Ваши задачи:
@@ -128,10 +128,10 @@ public class MessageHandlerTests {
     @Test
     void testDeleteTask() {
         messageHandler.processUserInput("/add Удаляемая задача", "user123");
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
+        BotResponse response = messageHandler.processUserInput("/delete Удаляемая задача", "user123");
         Assertions.assertEquals("🗑️ Задача \"Удаляемая задача\" удалена!", response.getMessage());
 
-        MessageHandler.BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
         Assertions.assertEquals("📝 Список задач пуст!", tasks_response.getMessage());
     }
 
@@ -141,10 +141,10 @@ public class MessageHandlerTests {
     @Test
     void testMarkTaskDone() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/done Полить цветы", "user123");
+        BotResponse response = messageHandler.processUserInput("/done Полить цветы", "user123");
         Assertions.assertEquals("✅ Задача \"Полить цветы\" выполнена!", response.getMessage());
 
-        MessageHandler.BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
+        BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
         Assertions.assertEquals("""
             ✅ Выполненные задачи:
             1. Полить цветы
@@ -156,7 +156,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testShowEmptyCompletedTasks() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/dTask", "user123");
+        BotResponse response = messageHandler.processUserInput("/dTask", "user123");
         Assertions.assertEquals("✅ Список выполненных задач пуст!", response.getMessage());
     }
 
@@ -167,7 +167,7 @@ public class MessageHandlerTests {
     void testShowCompletedTasks() {
         messageHandler.processUserInput("/add Полить цветы", "user123");
         messageHandler.processUserInput("/done Полить цветы", "user123");
-        MessageHandler.BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
+        BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
         Assertions.assertEquals("""
             ✅ Выполненные задачи:
             1. Полить цветы
@@ -179,7 +179,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testExportWithoutFilename() {
-        MessageHandler.BotResponse export_response = messageHandler.processUserInput("/export", "user123");
+        BotResponse export_response = messageHandler.processUserInput("/export", "user123");
         Assertions.assertEquals("Напишите имя файла после /export", export_response.getMessage());
     }
 
@@ -199,7 +199,7 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("/add Задача 2", exportUserId);
         messageHandler.processUserInput("/done Задача 1", exportUserId);
 
-        MessageHandler.BotResponse exportResponse = messageHandler.processUserInput("/export test_export.json", exportUserId);
+        BotResponse exportResponse = messageHandler.processUserInput("/export test_export.json", exportUserId);
 
         Assertions.assertNotNull(exportResponse.getFile(), "Файл не должен быть null");
         Assertions.assertEquals("test_export.json", exportResponse.getFileName());
@@ -209,9 +209,9 @@ public class MessageHandlerTests {
             messageHandler.processUserInput("/registration", importUserId);
             messageHandler.processUserInput("testUserImport", importUserId);
             messageHandler.processUserInput("password", importUserId);
-            MessageHandler.BotResponse importResponse = messageHandler.processImport(new FileInputStream(exportedFile), importUserId);
-            MessageHandler.BotResponse tasksResponse = messageHandler.processUserInput("/tasks", importUserId);
-            MessageHandler.BotResponse dTaskResponse = messageHandler.processUserInput("/dTask", importUserId);
+            BotResponse importResponse = messageHandler.processImport(new FileInputStream(exportedFile), importUserId);
+            BotResponse tasksResponse = messageHandler.processUserInput("/tasks", importUserId);
+            BotResponse dTaskResponse = messageHandler.processUserInput("/dTask", importUserId);
 
             Assertions.assertEquals("""
             📝 Ваши задачи:
@@ -236,7 +236,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testImportCommand_FileRequest() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/import", "user123");
+        BotResponse response = messageHandler.processUserInput("/import", "user123");
         Assertions.assertEquals("Для импорта отправьте JSON файл с задачами", response.getMessage());
     }
 
@@ -254,21 +254,21 @@ public class MessageHandlerTests {
         """;
         Files.write(testFile.toPath(), jsonContent.getBytes());
         try (FileInputStream inputStream = new FileInputStream(testFile)) {
-            MessageHandler.BotResponse import_response = messageHandler.processImport(inputStream, "user123");
+            BotResponse import_response = messageHandler.processImport(inputStream, "user123");
             Assertions.assertEquals("""
                     Задачи успешно добавлены,
                     можете проверить списки с помощью команд /tasks и /dTask
                     """, import_response.getMessage());
         }
 
-        MessageHandler.BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
+        BotResponse tasks_response = messageHandler.processUserInput("/tasks", "user123");
         Assertions.assertEquals("""
             📝 Ваши задачи:
             1. Задача 1
             2. Задача 2
             """, tasks_response.getMessage());
 
-        MessageHandler.BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
+        BotResponse dTask_response = messageHandler.processUserInput("/dTask", "user123");
         Assertions.assertEquals("""
             ✅ Выполненные задачи:
             1. Выполненная задача
@@ -280,7 +280,7 @@ public class MessageHandlerTests {
      */
     @Test
     void testUnknownCommand() {
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/unknown", "user123");
+        BotResponse response = messageHandler.processUserInput("/unknown", "user123");
         Assertions.assertNotNull(response.getMessage());
         Assertions.assertEquals(("""
                         Неизвестная команда.
@@ -294,21 +294,21 @@ public class MessageHandlerTests {
     void testRegistrationProcess() {
         String newUserId = "newUser";
 
-        MessageHandler.BotResponse step1 = messageHandler.processUserInput("/registration", newUserId);
+        BotResponse step1 = messageHandler.processUserInput("/registration", newUserId);
         Assertions.assertEquals(("""
                 📝 Регистрация нового пользователя
                 Введите логин:
                 """),step1.getMessage());
 
-        MessageHandler.BotResponse step2 = messageHandler.processUserInput("new_test_user", newUserId);
+        BotResponse step2 = messageHandler.processUserInput("new_test_user", newUserId);
         Assertions.assertEquals("✅Отлично! Теперь введите пароль:",step2.getMessage());
 
-        MessageHandler.BotResponse step3 = messageHandler.processUserInput("password123", newUserId);
+        BotResponse step3 = messageHandler.processUserInput("password123", newUserId);
         Assertions.assertEquals(("""
                     ✅ Регистрация прошла успешно!
                     """),step3.getMessage());
 
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Новая задача", newUserId);
+        BotResponse response = messageHandler.processUserInput("/add Новая задача", newUserId);
         Assertions.assertEquals("Задача \"Новая задача\" добавлена!", response.getMessage());
     }
 
@@ -318,7 +318,7 @@ public class MessageHandlerTests {
     @Test
     void testUnauthenticatedUser() {
         String newUserId = "unauthenticatedUser";
-        MessageHandler.BotResponse response = messageHandler.processUserInput("/add Задача", newUserId);
+        BotResponse response = messageHandler.processUserInput("/add Задача", newUserId);
         Assertions.assertEquals(""" 
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             
@@ -343,7 +343,7 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("password123", firstUserId);
 
         messageHandler.processUserInput("/registration", secondUserId);
-        MessageHandler.BotResponse response = messageHandler.processUserInput("user", secondUserId);
+        BotResponse response = messageHandler.processUserInput("user", secondUserId);
 
         Assertions.assertEquals( """
                     Пользователь с таким логином уже существует.
@@ -356,8 +356,8 @@ public class MessageHandlerTests {
     @Test
     void testIntegrationWithWrongUsername() {
         String userId = "wrongUser";
-        MessageHandler.BotResponse step1 = messageHandler.processUserInput("/integration", userId);
-        MessageHandler.BotResponse step2 = messageHandler.processUserInput("nonexistent_user", userId);
+        BotResponse step1 = messageHandler.processUserInput("/integration", userId);
+        BotResponse step2 = messageHandler.processUserInput("nonexistent_user", userId);
 
         Assertions.assertEquals("""
                     Пользователь 'nonexistent_user' не найден.
@@ -378,7 +378,7 @@ public class MessageHandlerTests {
 
         messageHandler.processUserInput("/integration", loginUserId);
         messageHandler.processUserInput("test_login_user", loginUserId);
-        MessageHandler.BotResponse response = messageHandler.processUserInput("wrong_password", loginUserId);
+        BotResponse response = messageHandler.processUserInput("wrong_password", loginUserId);
 
         Assertions.assertEquals("Неверный пароль. Попробуйте снова.", response.getMessage());
     }
