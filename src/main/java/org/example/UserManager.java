@@ -43,6 +43,16 @@ public class UserManager {
     }
 
     /**
+     * Выход пользователя из системы
+     *
+     * @param platformId идентификатор платформы
+     * @return true если пользователь был авторизован, false в противном случае
+     */
+    public boolean outUser(String platformId) {
+        return platformToUsername.remove(platformId) != null;
+    }
+
+    /**
      * Получает имя пользователя по platformId
      *
      * @param platformId идентификатор платформы

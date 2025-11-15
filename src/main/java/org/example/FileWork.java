@@ -1,9 +1,7 @@
 package org.example;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,20 +17,17 @@ public class FileWork {
      * Создает файл с указанным именем, содержащий текущие и выполненные задачи.
      * Автоматически добавляет расширение .json если оно отсутствует.
      *
-     * @param userId идентификатор пользователя
      * @param tasks список текущих задач для экспорта
      * @param completedTasks список выполненных задач для экспорта
      * @param filename имя файла для экспорта
      * @return File объект созданного файла с экспортированными задачами
      * @throws IOException если произошла ошибка ввода-вывода при создании файла
      */
-    public File export(String userId, List<String> tasks, List<String> completedTasks, String filename) throws IOException {
+    public File export(List<String> tasks, List<String> completedTasks, String filename) throws IOException {
         if (!filename.endsWith(".json")) {
             filename += ".json";
         }
-
         File file = new File(filename);
-
         try {
             // Сериализация
             FileData exportData = new FileData(
@@ -60,17 +55,6 @@ public class FileWork {
             return objectMapper.readValue(inputStream, FileData.class);
         } catch (IOException e) {
             throw new IOException("Ошибка при чтении файла: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Удаляет указанный файл.
-     *
-     * @param file файл для удаления
-     */
-    public void delete(File file){
-        if(file != null && file.exists()){
-            file.delete();
         }
     }
 

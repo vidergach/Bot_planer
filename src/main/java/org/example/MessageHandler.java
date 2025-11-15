@@ -18,45 +18,6 @@ public class MessageHandler {
     private final UserManager userManager = new UserManager();
 
     /**
-     * Структура для возврата ответа бота
-     * Содержит текстовое сообщение для отправки пользователю.
-     */
-    public class BotResponse {
-        private final String message;
-        private final File file;
-        private final String fileName;
-
-        /**
-         * Создает текстовый ответ
-         *
-         * @param message текстовое сообщение
-         */
-        public BotResponse(String message) {
-            this.message = message;
-            this.file = null;
-            this.fileName = null;
-        }
-
-        /**
-         * Создает ответ с файлом
-         *
-         * @param message текстовое сообщение
-         * @param file файл
-         * @param fileName имя файла
-         */
-        public BotResponse(String message, File file, String fileName) {
-            this.message = message;
-            this.file = file;
-            this.fileName = fileName;
-        }
-
-        public String getMessage() { return message; }
-        public File getFile() { return file; }
-        public String getFileName() { return fileName; }
-        public boolean hasFile() { return file != null; }
-    }
-
-    /**
      * Класс для отслеживания аутентификации пользователя.
      * Хранит информацию о регистрации.
      */
@@ -96,8 +57,9 @@ public class MessageHandler {
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             
             ⚠️ Для начала работы необходимо авторизоваться:
-            /registration - зарегистрироваться (для новых пользователей)
-            /integration - войти в существующий аккаунт
+            /registration - зарегистрироваться
+            /login - войти в существующий аккаунт
+            /exit - выйти из аккаунта
             
             После авторизации вы сможете использовать все функции планировщика!
             """;
@@ -114,6 +76,7 @@ public class MessageHandler {
             /delete - удалить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
+            /exit - выйти из аккаунта
             /help - помощь
             """;
 
@@ -128,6 +91,7 @@ public class MessageHandler {
             /delete - удалить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
+            /exit - выйти из аккаунта
             /help - помощь
             
             Например:
@@ -174,7 +138,6 @@ public class MessageHandler {
      */
     public BotResponse processUserInput(String userInput, String userId) {
         System.out.println("сообщение: " + userInput + " от: " + userId);
-
         try {
             if (!isUserAuthenticated(userId)) {
                 if (!authStates.containsKey(userId)) {
@@ -182,8 +145,8 @@ public class MessageHandler {
                     String command = parts.getCommand();
 
                     if (command.equals("/registration") ||
-                            command.equals("/integration")) {
-                        return processCommand(command, parts.getParameter(), userId, null);
+                            command.equals("/login")) {
+                        return processCommand(command, parts.getParameter(), userId);
                     } else {
                         return new BotResponse(WELCOME_MESSAGE);
                     }
@@ -191,11 +154,10 @@ public class MessageHandler {
                     return handleAuthStep(userId, userInput);
                 }
             }
-            UserData userData = getUserDataForUserId(userId);
             CommandParts parts = parseCommand(userInput);
             String command = parts.getCommand();
             String parameter = parts.getParameter();
-            return processCommand(command, parameter, userId, userData);
+            return processCommand(command, parameter, userId);
         } catch (Exception e) {
             e.printStackTrace();
             return new BotResponse("Произошла ошибка: " + e.getMessage());
@@ -215,7 +177,7 @@ public class MessageHandler {
 
     /**
      * Обрабатывает импорт задач из файла
-     * Читает задачи из входного потока (JSON файла) и добавляет их в список
+     * считывает задачи из входного потока (JSON файла) и добавляет их в список
      * задач пользователя.
      *
      * @param inputStream поток данных из загруженного файла
@@ -226,23 +188,18 @@ public class MessageHandler {
         try {
             UserData userData = getUserData(userId);
             FileWork.FileData result = fileWork.importData(inputStream);
-            int addedTasks = 0;
-            int addedCompleted = 0;
             for (String task : result.current_tasks()) {
                 if (!userData.getTasks().contains(task) && !userData.getCompletedTasks().contains(task)) {
                     userData.addTask(task);
-                    addedTasks++;
                 }
             }
             for (String task : result.completed_tasks()) {
                 if (!userData.getCompletedTasks().contains(task)) {
                     if (userData.getTasks().contains(task)) {
                         userData.markTaskDone(task);
-                        addedCompleted++;
                     } else if (!userData.getCompletedTasks().contains(task)) {
                         userData.addTask(task);
                         userData.markTaskDone(task);
-                        addedCompleted++;
                     }
                 }
             }
@@ -254,19 +211,6 @@ public class MessageHandler {
             e.printStackTrace();
             return new BotResponse("Ошибка при импорте: " + e.getMessage());
         }
-    }
-
-    /**
-     * Получает или создает данные пользователя по идентификатору.
-     *
-     * @param userId идентификатор пользователя
-     * @return объект UserData пользователя
-     */
-    private UserData getUserDataForUserId(String userId) {
-        if (!userDataMap.containsKey(userId)) {
-            userDataMap.put(userId, new UserData());
-        }
-        return userDataMap.get(userId);
     }
 
     /**
@@ -293,13 +237,12 @@ public class MessageHandler {
      * @param command команда для выполнения
      * @param parameter параметры команды
      * @param userId идентификатор пользователя
-     * @param userData данные пользователя
      * @return ответ с результатом выполнения команды
      */
-    private BotResponse processCommand(String command, String parameter, String userId, UserData userData) {
+    private BotResponse processCommand(String command, String parameter, String userId) {
         try {
             return switch (command) {
-                case "/start" -> new BotResponse(isUserAuthenticated(userId) ? START_MESSAGE : WELCOME_MESSAGE);
+                case "/start" -> new BotResponse(START_MESSAGE);
                 case "/help" -> new BotResponse(HELP_MESSAGE);
                 case "/add" -> handleAddTask(parameter, userId);
                 case "/tasks" -> handleShowTasks(userId);
@@ -307,7 +250,8 @@ public class MessageHandler {
                 case "/dTask" -> handleShowCompletedTasks(userId);
                 case "/delete" -> handleDeleteTask(parameter, userId);
                 case "/registration" -> startRegistration(userId);
-                case "/integration" -> startIntegration(userId);
+                case "/login" -> startLogin(userId);
+                case "/exit" -> handleExit(userId);
                 case "/export" -> handleExport(parameter, userId);
                 case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
                 default -> new BotResponse("""
@@ -434,7 +378,7 @@ public class MessageHandler {
         }
         try {
             UserData userData = getUserData(userId);
-            File exportFile = fileWork.export(userId, userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
+            File exportFile = fileWork.export(userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
             return new BotResponse("Ваши задачи экспортированы в файл: "
                     + exportFile.getName(), exportFile, exportFile.getName());
         } catch (Exception e) {
@@ -463,7 +407,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя
      * @return ответ с запросом логина
      */
-    private BotResponse startIntegration(String userId) {
+    private BotResponse startLogin(String userId) {
         authStates.put(userId, new AuthState("integration"));
         return new BotResponse("""
                 🔑 Вход в аккаунт
@@ -471,6 +415,26 @@ public class MessageHandler {
                 """);
     }
 
+    /**
+     * Обрабатывает выход пользователя из аккаунта.
+     *
+     * @param userId идентификатор пользователя
+     * @return ответ с результатом операции
+     */
+    private BotResponse handleExit(String userId) {
+        String username = userManager.getUsername(userId);
+        if (username == null) {
+            return new BotResponse("Вы не авторизованы");
+        }
+        userManager.outUser(userId);
+        return new BotResponse("""
+                Вы вышли из аккаунта.
+                
+                Для продолжения работы:
+                /registration - зарегистрироваться
+                /login - войти в существующий аккаунт
+                """);
+    }
     /**
      * Обрабатывает шаг процесса аутентификации.
      *
@@ -538,7 +502,7 @@ public class MessageHandler {
             if ("registration".equals(state.type)) {
                 return completeRegistration(state, password, userId);
             } else {
-                return completeIntegration(state, password, userId);
+                return completeLogin(state, password, userId);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -573,7 +537,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя
      * @return ответ с результатом входа
      */
-    private BotResponse completeIntegration(AuthState state, String password, String userId) {
+    private BotResponse completeLogin(AuthState state, String password, String userId) {
         if (userManager.authenticateUser(state.username, password, userId)) {
             synchronizeUserData(userId, state.username);
             return new BotResponse("""
@@ -611,10 +575,12 @@ public class MessageHandler {
         UserData oldData = userDataMap.get(oldUserId);
         UserData newData = getUserData(newUsername);
 
-        if (oldData == null || newData == null) return;
+        if (oldData == null || newData == null)
+            return;
 
         for (String task : oldData.getTasks()) {
-            if (!newData.getTasks().contains(task) && !newData.getCompletedTasks().contains(task)) {
+            if (!newData.getTasks().contains(task) &&
+                    !newData.getCompletedTasks().contains(task)) {
                 try {
                     newData.addTask(task);
                 } catch (IllegalStateException ignored) {}
@@ -633,7 +599,6 @@ public class MessageHandler {
                 } catch (Exception ignored) {}
             }
         }
-
         userDataMap.remove(oldUserId);
     }
 }
