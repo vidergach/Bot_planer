@@ -381,7 +381,7 @@ public class MessageHandlerTests {
         @Test
         void testIntegrationWithWrongUsername() {
             String userId = "user19";
-            messageHandler.processUserInput("/integration", userId, PLATFORM_TYPE);
+            messageHandler.processUserInput("/login", userId, PLATFORM_TYPE);
             BotResponse step2 = messageHandler.processUserInput("nonexistent_user", userId, PLATFORM_TYPE);
 
             Assertions.assertEquals("""
@@ -403,7 +403,7 @@ public class MessageHandlerTests {
             messageHandler.processUserInput("test_login_user", regUserId, PLATFORM_TYPE);
             messageHandler.processUserInput("correct_password", regUserId, PLATFORM_TYPE);
 
-            messageHandler.processUserInput("/integration", loginUserId, PLATFORM_TYPE);
+            messageHandler.processUserInput("/login", loginUserId, PLATFORM_TYPE);
             messageHandler.processUserInput("test_login_user", loginUserId, PLATFORM_TYPE);
             BotResponse response = messageHandler.processUserInput("wrong_password", loginUserId, PLATFORM_TYPE);
 
