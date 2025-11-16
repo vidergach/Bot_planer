@@ -41,10 +41,10 @@ public class DiscordBot extends ListenerAdapter {
             e.printStackTrace();
         }
     }
+
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
-        if (event.getAuthor().isBot())
-            return;
+        if (event.getAuthor().isBot()) return;
 
         String message = event.getMessage().getContentRaw();
         String userId = event.getAuthor().getId();
@@ -55,7 +55,8 @@ public class DiscordBot extends ListenerAdapter {
                 handleImport(event, userId, channel);
                 return;
             }
-            BotResponse response = logic.processUserInput(message, userId);
+            String PLATFORM_TYPE = "discord";
+            BotResponse response = logic.processUserInput(message, userId, PLATFORM_TYPE);
             if (response.hasFile()) {
                 channel.sendFiles(FileUpload.fromData(response.getFile(), response.getFileName()))
                         .setContent(response.getMessage())
@@ -63,7 +64,6 @@ public class DiscordBot extends ListenerAdapter {
             } else {
                 channel.sendMessage(response.getMessage()).queue();
             }
-
         } catch (Exception e) {
             channel.sendMessage("Ошибка: " + e.getMessage()).queue();
             e.printStackTrace();
