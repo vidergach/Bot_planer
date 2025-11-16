@@ -40,13 +40,17 @@ public class Keyboard {
         row3.add("Импорт");
 
         KeyboardRow row4 = new KeyboardRow();
-        row4.add("Помощь");
+        row4.add("Выйти из аккаунта");
+
+        KeyboardRow row5 = new KeyboardRow();
+        row5.add("Помощь");
 
         rows.add(row0);
         rows.add(row1);
         rows.add(row2);
         rows.add(row3);
         rows.add(row4);
+        rows.add(row5);
 
         keyboard.setKeyboard(rows);
         return keyboard;

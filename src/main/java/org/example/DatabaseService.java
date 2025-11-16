@@ -396,4 +396,23 @@ public class DatabaseService {
             return rs.next();
         }
     }
+
+    /**
+     * Выход пользователя из системы.
+     *
+     * @param platformId идентификатор платформы
+     * @param platformType тип платформы
+     * @return true если выход выполнен успешно, false если пользователь не был авторизован
+     * @throws SQLException если произошла ошибка при работе с базой данных
+     */
+    public boolean logoutUser(String platformId, String platformType) throws SQLException {
+        String sql = "DELETE FROM user_sessions WHERE platform_id = ? AND platform_type = ?";
+        try (Connection conn = DriverManager.getConnection(databaseUrl);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, platformId);
+            pstmt.setString(2, platformType);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        }
+    }
 }

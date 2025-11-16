@@ -35,75 +35,6 @@ public class MessageHandler {
     }
 
     /**
-     * Класс, представляющий ответ бота на запрос.
-     */
-    public class BotResponse {
-        private final String message;
-        private final File file;
-        private final String fileName;
-
-        /**
-         * Конструктор для создания текстового ответа.
-         *
-         * @param message текстовое сообщение
-         */
-        public BotResponse(String message) {
-            this.message = message;
-            this.file = null;
-            this.fileName = null;
-        }
-
-        /**
-         * Конструктор для создания ответа с файлом.
-         *
-         * @param message текстовое сообщение
-         * @param file файл
-         * @param fileName имя файла
-         */
-        public BotResponse(String message, File file, String fileName) {
-            this.message = message;
-            this.file = file;
-            this.fileName = fileName;
-        }
-
-        /**
-         * Возвращает текстовое сообщение ответа.
-         *
-         * @return текстовое сообщение
-         */
-        public String getMessage() {
-            return message;
-        }
-
-        /**
-         * Возвращает файл ответа.
-         *
-         * @return файл для отправки
-         */
-        public File getFile() {
-            return file;
-        }
-
-        /**
-         * Возвращает имя файла.
-         *
-         * @return имя файла
-         */
-        public String getFileName() {
-            return fileName;
-        }
-
-        /**
-         * Проверяет, содержит ли ответ файл.
-         *
-         * @return true если ответ содержит файл, false в противном случае
-         */
-        public boolean hasFile() {
-            return file != null;
-        }
-    }
-
-    /**
      * Внутренний класс для отслеживания состояния аутентификации пользователя.
      */
     private class AuthState {
@@ -124,7 +55,8 @@ public class MessageHandler {
 
             Для начала работы необходимо авторизоваться:
             /registration - Регистрация
-            /integration - Войти в аккаунт
+            /login - Войти в аккаунт
+            /exit - Выйти из аккаунта
 
             После авторизации вы сможете использовать все функции планировщика!
             """;
@@ -142,6 +74,7 @@ public class MessageHandler {
             /delete - удалить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
+            /exit - выйти из аккаунта
             /help - помощь
             """;
 
@@ -158,6 +91,7 @@ public class MessageHandler {
             \u2718 Удалить
             Экспорт - предоставить список задач пользователя в файле
             Импорт - загрузить список задач из файла
+            Выйти из аккаунта
             Помощь
 
             Например:
@@ -235,11 +169,13 @@ public class MessageHandler {
             String parameter = parts.length > 1 ? parts[1].trim() : "";
 
             if (!isUserAuthenticated(userId, platformType)) {
-                if (command.equals("/registration") || command.equals("/integration")) {
+                if (command.equals("/registration") || command.equals("/login")) {
                     if (command.equals("/registration")) {
                         return handleRegistration(userId, platformType);
+                    } else if (command.equals("/login")){
+                        return handleLogin(userId, platformType);
                     } else {
-                        return handleIntegration(userId, platformType);
+                        return handleExit(userId, platformType);
                     }
                 }
                 return new BotResponse(WELCOME_MESSAGE);
@@ -373,7 +309,8 @@ public class MessageHandler {
                                 Введите название задачи для удаления:
                                 Например: Купить молоко""");
                 case "/registration" -> handleRegistration(userId, platformType);
-                case "/integration" -> handleIntegration(userId, platformType);
+                case "/login" -> handleLogin(userId, platformType);
+                case "/exit" -> handleExit(userId, platformType);
                 case "/export" -> handleOperation("export", parameter, userId,
                         """
                                 Напишите имя файла для экспорта
@@ -496,12 +433,39 @@ public class MessageHandler {
      * @param platformType тип платформы
      * @return ответ бота
      */
-    private BotResponse handleIntegration(String userId, String platformType) {
+    private BotResponse handleLogin(String userId, String platformType) {
         authStates.put(userId, new AuthState("integration", platformType));
         return new BotResponse("""
                 🔑 Вход в аккаунт
                 Введите логин:
                 """);
+    }
+
+    /**
+     * Обрабатывает выход пользователя из аккаунта.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ с результатом операции
+     */
+    private BotResponse handleExit(String userId, String platformType) {
+        try {
+            if (isUserAuthenticated(userId, platformType)) {
+                if (databaseService.logoutUser(userId, platformType)) {
+                    return new BotResponse("""
+                            ✅ Вы успешно вышли из аккаунта.
+                            
+                            Для продолжения работы:
+                            /registration - зарегистрироваться
+                            /login - войти в существующий аккаунт
+                            """);
+                }
+            }
+            return new BotResponse("Вы не авторизованы.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при выходе из аккаунта: " + e.getMessage());
+        }
     }
 
     /**

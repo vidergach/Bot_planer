@@ -47,7 +47,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                 String command = convertButton(text);
                 String PLATFORM_TYPE = "telegram";
-                MessageHandler.BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
+                BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
 
                 SendMessage message = new SendMessage();
                 message.setChatId(chatId);
@@ -90,7 +90,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "Импорт" -> "/import";
             case "Помощь" -> "/help";
             case "\uD83D\uDCDD Регистрация" -> "/registration";
-            case "Войти в аккаунт" -> "/integration";
+            case "Войти в аккаунт" -> "/login";
+            case "Выйти из аккаунта" -> "/exit";
             default -> button;
         };
     }
@@ -110,7 +111,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
             java.io.File downloadedFile = downloadFile(file);
             try (InputStream inputStream = new java.io.FileInputStream(downloadedFile)) {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                BotResponse response = logic.processImport(inputStream, userId);
                 execute(new SendMessage(chatId, response.getMessage()));
             }
 

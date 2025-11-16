@@ -52,11 +52,11 @@ public class DiscordBot extends ListenerAdapter {
 
         try {
             if (!event.getMessage().getAttachments().isEmpty()) {
-                handleImport_Discord(event, userId, channel);
+                handleImport(event, userId, channel);
                 return;
             }
             String PLATFORM_TYPE = "discord";
-            MessageHandler.BotResponse response = logic.processUserInput(message, userId, PLATFORM_TYPE);
+            BotResponse response = logic.processUserInput(message, userId, PLATFORM_TYPE);
             if (response.hasFile()) {
                 channel.sendFiles(FileUpload.fromData(response.getFile(), response.getFileName()))
                         .setContent(response.getMessage())
@@ -81,13 +81,13 @@ public class DiscordBot extends ListenerAdapter {
      * @see Message.Attachment
      * @see InputStream
      */
-    private void handleImport_Discord(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
+    private void handleImport(MessageReceivedEvent event, String userId, GuildMessageChannel channel) {
         List<Message.Attachment> attachments = event.getMessage().getAttachments();
         Message.Attachment fileAttachment = attachments.get(0);
 
         fileAttachment.getProxy().download().thenAccept(inputStream -> {
             try {
-                MessageHandler.BotResponse response = logic.processImport(inputStream, userId);
+                BotResponse response = logic.processImport(inputStream, userId);
                 channel.sendMessage(response.getMessage()).queue();
             } catch (Exception e) {
                 channel.sendMessage("Ошибка при обработке файла: " + e.getMessage()).queue();
