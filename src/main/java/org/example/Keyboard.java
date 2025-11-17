@@ -15,7 +15,7 @@ public class Keyboard {
      *
      * @return объект с кнопками команд
      */
-    public static ReplyKeyboardMarkup authorizationKeyboard() {
+    public ReplyKeyboardMarkup authorizationKeyboard() {
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
         keyboard.setOneTimeKeyboard(false);
