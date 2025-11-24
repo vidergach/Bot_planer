@@ -288,6 +288,7 @@ public class DatabaseService {
             if (e.getErrorCode() == 19) {
                 return false;
             }
+            e.printStackTrace();
             throw e;
         }
     }
@@ -411,29 +412,20 @@ public class DatabaseService {
 
     /**
      * Выход пользователя из системы.
-     *
-     * @param platformId   идентификатор платформы
-     * @param platformType тип платформы
-     * @return true если выход выполнен успешно, false если пользователь не был авторизован
-     * @throws SQLException если произошла ошибка
      */
     public boolean logoutUser(String platformId, String platformType) throws SQLException {
         String sql = "DELETE FROM user_sessions WHERE platform_id = ? AND platform_type = ?";
         try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, platformId);
-            pstmt.setString(2, platformType);
-            int affectedRows = pstmt.executeUpdate();
+             PreparedStatement preparedStatement= conn.prepareStatement(sql)) {
+            preparedStatement.setString(1, platformId);
+            preparedStatement.setString(2, platformType);
+            int affectedRows = preparedStatement.executeUpdate();
             return affectedRows > 0;
         }
     }
 
     /**
      * Добавляет новую подзадачу к указанной задаче.
-
-     * @param taskId идентификатор задачи
-     * @param subtaskText текст подзадачи
-     * @throws SQLException если произошла ошибка
      */
     public void addSubtask(Integer taskId, String subtaskText) throws SQLException {
         String sql = "INSERT INTO subtasks (task_id, subtask_text) VALUES (?, ?)";
@@ -444,6 +436,7 @@ public class DatabaseService {
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
             if (e.getErrorCode() != 19) {
+                e.printStackTrace();
                 throw e;
             }
         }
@@ -451,10 +444,6 @@ public class DatabaseService {
 
     /**
      * Удаляет подзадачу.
-     *
-     * @param taskId идентификатор задачи
-     * @param subtaskText текст подзадачи
-     * @throws SQLException если произошла ошибка
      */
     public void deleteSubtask(Integer taskId, String subtaskText) throws SQLException {
         String sql = "DELETE FROM subtasks WHERE task_id = ? AND subtask_text = ?";
@@ -468,11 +457,6 @@ public class DatabaseService {
 
     /**
      * Изменяет текст подзадачи.
-     *
-     * @param taskId идентификатор задачи
-     * @param oldSubtaskText текст подзадачи
-     * @param newSubtaskText новый текст подзадачи
-     * @throws SQLException если произошла ошибка
      */
     public void editSubtask(Integer taskId, String oldSubtaskText, String newSubtaskText) throws SQLException {
         String sql = "UPDATE subtasks SET subtask_text = ? WHERE task_id = ? AND subtask_text = ?";
@@ -487,10 +471,6 @@ public class DatabaseService {
 
     /**
      * Список подзадач для задачи.
-     *
-     * @param taskId идентификатор задачи
-     * @return список подзадач
-     * @throws SQLException если произошла ошибка
      */
     public List<String> getSubtasks(Integer taskId) throws SQLException {
         List<String> subtasks = new ArrayList<>();
@@ -508,11 +488,6 @@ public class DatabaseService {
 
     /**
      * Возвращает идентификатор задачи.
-     *
-     * @param userId идентификатор пользователя
-     * @param taskText текст задачи
-     * @return идентификатор задачи
-     * @throws SQLException если произошла ошибка
      */
     public Integer getTaskId(String userId, String taskText) throws SQLException {
         String sql = "SELECT id FROM user_tasks WHERE user_id = ? AND task_text = ?";

@@ -10,9 +10,6 @@ import java.sql.Statement;
 
 /**
  * Тесты для класса MessageHandler.
- * Проверяет функциональность обработки команд бота.
- *
- * @see MessageHandler
  */
 public class MessageHandlerTests {
     private MessageHandler messageHandler;
@@ -57,8 +54,6 @@ public class MessageHandlerTests {
 
     /**
      * Регистрирует тестового пользователя в системе.
-     *
-     * @param userId идентификатор пользователя для регистрации
      */
     private void registerTestUser(String userId) {
         messageHandler.processUserInput("/registration", userId, PLATFORM_TYPE);
@@ -67,8 +62,15 @@ public class MessageHandlerTests {
     }
 
     /**
+     * Входит в режим расширения задачи.
+     */
+    private void enterExpandMode(String userId) {
+        messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        messageHandler.processUserInput(String.valueOf(1), userId, PLATFORM_TYPE);
+    }
+
+    /**
      * Тестирует добавление новой задачи.
-     * Проверяет корректность добавления и отображения задачи в списке.
      */
     @Test
     void testAddTask() {
@@ -80,14 +82,13 @@ public class MessageHandlerTests {
 
         BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
-                📝 Ваши задачи:
-                1. Полить цветы
-                """, tasksResponse.getMessage());
+        📝 Ваши задачи:
+        1. Полить цветы
+        """, tasksResponse.getMessage());
     }
 
     /**
      * Тестирует добавление задачи без названия.
-     * Проверяет сообщение от бота.
      */
     @Test
     void testAddEmptyTask() {
@@ -96,13 +97,12 @@ public class MessageHandlerTests {
 
         BotResponse response = messageHandler.processUserInput("/add", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
-                Введите задачу для добавления:
-                Например: Купить молоко""", response.getMessage());
+                                Введите задачу для добавления:
+                                Например: Купить молоко""", response.getMessage());
     }
 
     /**
      * Тестирует удаление задачи без названия.
-     * Проверяет сообщение от бота.
      */
     @Test
     void testDeleteEmptyTask() {
@@ -111,13 +111,12 @@ public class MessageHandlerTests {
 
         BotResponse response = messageHandler.processUserInput("/delete", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
-                Введите название задачи для удаления:
-                Например: Купить молоко""", response.getMessage());
+        Введите название задачи для удаления:
+        Например: Купить молоко""", response.getMessage());
     }
 
     /**
      * Тестирует команду выполнения без указания задачи.
-     * Проверяет сообщение от бота.
      */
     @Test
     void testMarkEmptyTaskDone() {
@@ -126,13 +125,12 @@ public class MessageHandlerTests {
 
         BotResponse response = messageHandler.processUserInput("/done", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
-                Введите название задачи для отметки выполнения:
-                Например: Купить молоко""", response.getMessage());
+        Введите название задачи для отметки выполнения:
+        Например: Купить молоко""", response.getMessage());
     }
 
     /**
      * Тестирует добавление дублирующихся задач.
-     * Проверяет, что задача с одинаковым названием добавляется только один раз.
      */
     @Test
     void testAddExistingTask() {
@@ -144,8 +142,8 @@ public class MessageHandlerTests {
         String tasksMessage = tasks_response.getMessage();
         int count = 0;
         String[] lines = tasksMessage.split("\n");
-        for (String line : lines) {
-            if (line.contains("Полить цветы")) {
+        for (String line: lines){
+            if (line.contains("Полить цветы")){
                 count++;
             }
         }
@@ -154,7 +152,6 @@ public class MessageHandlerTests {
 
     /**
      * Тестирует пустой списка задач.
-     * Проверяет сообщение о пустом списке.
      */
     @Test
     void testShowEmptyTasks() {
@@ -167,7 +164,6 @@ public class MessageHandlerTests {
 
     /**
      * Тестирует список с несколькими задачами.
-     * Проверяет вывод и нумерацию задач.
      */
     @Test
     void testShowTasks() {
@@ -179,15 +175,14 @@ public class MessageHandlerTests {
         BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
 
         Assertions.assertEquals("""
-                📝 Ваши задачи:
-                1. Задача 1
-                2. Задача 2
-                """, tasksResponse.getMessage());
+        📝 Ваши задачи:
+        1. Задача 1
+        2. Задача 2
+        """, tasksResponse.getMessage());
     }
 
     /**
      * Тестирует удаление существующей задачи.
-     * Проверяет удаление и обновление списка задач.
      */
     @Test
     void testDeleteTask() {
@@ -195,7 +190,7 @@ public class MessageHandlerTests {
         registerTestUser(userId);
 
         messageHandler.processUserInput("/add Удаляемая задача", userId, PLATFORM_TYPE);
-        BotResponse response = messageHandler.processUserInput("/delete Удаляемая задача", userId, PLATFORM_TYPE);
+        BotResponse response = messageHandler.processUserInput("/delete Удаляемая задача", userId,PLATFORM_TYPE);
         Assertions.assertEquals("🗑️ Задача \"Удаляемая задача\" удалена!", response.getMessage());
 
         BotResponse tasks_response = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
@@ -204,7 +199,6 @@ public class MessageHandlerTests {
 
     /**
      * Тестирует отметку задачи как выполненной.
-     * Проверяет перемещение задачи в список выполненных.
      */
     @Test
     void testMarkTaskDone() {
@@ -216,12 +210,14 @@ public class MessageHandlerTests {
         Assertions.assertEquals("✅ Задача \"Полить цветы\" выполнена!", response.getMessage());
 
         BotResponse dTaskResponse = messageHandler.processUserInput("/dTask", userId, PLATFORM_TYPE);
-        Assertions.assertEquals("✅ Выполненные задачи:\n1. Полить цветы\n", dTaskResponse.getMessage());
+        Assertions.assertEquals("""
+            ✅ Выполненные задачи:
+            1. Полить цветы
+            """, dTaskResponse.getMessage());
     }
 
     /**
      * Тестирует пустой список выполненных задач.
-     * Проверяет сообщение о пустом списке.
      */
     @Test
     void testShowEmptyCompletedTasks() {
@@ -234,7 +230,6 @@ public class MessageHandlerTests {
 
     /**
      * Тестирует список выполненных задач.
-     * Проверяет вывод выполненных задач.
      */
     @Test
     void testShowCompletedTasks() {
@@ -245,12 +240,14 @@ public class MessageHandlerTests {
         messageHandler.processUserInput("/done Полить цветы", userId, PLATFORM_TYPE);
         BotResponse dTaskResponse = messageHandler.processUserInput("/dTask", userId, PLATFORM_TYPE);
 
-        Assertions.assertEquals("✅ Выполненные задачи:\n1. Полить цветы\n", dTaskResponse.getMessage());
+        Assertions.assertEquals("""
+            ✅ Выполненные задачи:
+            1. Полить цветы
+            """, dTaskResponse.getMessage());
     }
 
     /**
      * Тестирует экспорт без имени файла.
-     * Проверяет запрос имени файла от бота.
      */
     @Test
     void testExportWithoutFilename() {
@@ -258,12 +255,13 @@ public class MessageHandlerTests {
         registerTestUser(userId);
 
         BotResponse exportResponse = messageHandler.processUserInput("/export", userId, PLATFORM_TYPE);
-        Assertions.assertEquals("Напишите имя файла для экспорта\nНапример: 'list'", exportResponse.getMessage());
+        Assertions.assertEquals("""
+        Напишите имя файла для экспорта
+        Например: 'list'""", exportResponse.getMessage());
     }
 
     /**
-     * Тестирует импорт задач.
-     * Проверяет запрос файла от бота.
+     * Тестирует отправления пустой команды для импорта
      */
     @Test
     void testImportCommand_FileRequest() {
@@ -275,8 +273,7 @@ public class MessageHandlerTests {
     }
 
     /**
-     * Тестирует неизвестную команду.
-     * Проверяет сообщение об ошибке и о помощи.
+     * Тестирует неизвестную команду
      */
     @Test
     void testUnknownCommand() {
@@ -285,14 +282,13 @@ public class MessageHandlerTests {
 
         BotResponse response = messageHandler.processUserInput("/unknown", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
-                Неизвестная команда.
-                Введите /help для просмотра доступных команд.
-                """, response.getMessage());
+                        Неизвестная команда.
+                        Введите /help для просмотра доступных команд.
+                        """, response.getMessage());
     }
 
     /**
      * Тестирует процесс регистрации нового пользователя.
-     * Проверяет все шаги регистрации и работу с задачами.
      */
     @Test
     void testRegistrationProcess() {
@@ -301,38 +297,37 @@ public class MessageHandlerTests {
         BotResponse step1 = messageHandler.processUserInput("/registration", newUserId, PLATFORM_TYPE);
         Assertions.assertEquals("""
                 📝 Регистрация нового пользователя
-                Введите логин:
-                """, step1.getMessage());
+                Введите логин:""", step1.getMessage());
 
         BotResponse step2 = messageHandler.processUserInput("new_test_user", newUserId, PLATFORM_TYPE);
         Assertions.assertEquals("✅Отлично! Теперь введите пароль:", step2.getMessage());
 
         BotResponse step3 = messageHandler.processUserInput("password123", newUserId, PLATFORM_TYPE);
         String expectedStep3 = """
-                ✅ Регистрация завершена успешно!
-                Добро пожаловать, new_test_user!
-                Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
-                Я могу организовывать ваши задачи.
-                Можете воспользоваться кнопками для удобства)
-                
-                Команды:
-                /add - добавить задачу
-                /tasks - показать список задач
-                /done - отметить выполненной
-                /dTask - список выполненных задач
-                /delete - удалить задачу
-                /expand - расширить задачу
-                /export - предоставить список задач пользователя в файле
-                /import - загрузить список задач из файла
-                /exit - выйти из аккаунта
-                /help - помощь
-                
-                Команды для подзадач:
-                /add_subtask - добавить подзадачу
-                /delete_subtask - удалить подзадачу
-                /edit_subtask - изменить подзадачу
-                /finish_subtask - окончить расширение задачи
-                """;
+            ✅ Регистрация завершена успешно!
+            Добро пожаловать, new_test_user!
+            Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
+            Я могу организовывать ваши задачи.
+            Можете воспользоваться кнопками для удобства)
+
+            Команды:
+            /add - добавить задачу
+            /tasks - показать список задач
+            /done - отметить выполненной
+            /dTask - список выполненных задач
+            /delete - удалить задачу
+            /expand - расширить задачу
+            /export - предоставить список задач пользователя в файле
+            /import - загрузить список задач из файла
+            /exit - выйти из аккаунта
+            /help - помощь
+            
+            Команды для подзадач:
+            /add_subtask - добавить подзадачу
+            /delete_subtask - удалить подзадачу
+            /edit_subtask - изменить подзадачу
+            /finish_subtask - окончить расширение задачи
+            """;
         Assertions.assertEquals(expectedStep3, step3.getMessage());
 
         BotResponse response = messageHandler.processUserInput("/add Новая задача", newUserId, PLATFORM_TYPE);
@@ -340,29 +335,27 @@ public class MessageHandlerTests {
     }
 
     /**
-     * Тестирует неавторизованного пользователя.
-     * Проверяет запрос авторизации при попытке использования бота.
+     * Тестирует попытку добавить задачу не авторизовавшись
      */
     @Test
     void testUnauthenticatedUser() {
         String newUserId = "user16";
         BotResponse response = messageHandler.processUserInput("/add Задача", newUserId, PLATFORM_TYPE);
-        String expectedMessage = """
-                Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
-                
-                Для начала работы необходимо авторизоваться:
-                /registration - Регистрация
-                /login - Войти в аккаунт
-                /exit - Выйти из аккаунта
-                
-                После авторизации вы сможете использовать все функции планировщика!
-                """;
+        String expectedMessage =   """
+            Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
+
+            Для начала работы необходимо авторизоваться:
+            /registration - Регистрация
+            /login - Войти в аккаунт
+            /exit - Выйти из аккаунта
+
+            После авторизации вы сможете использовать все функции планировщика!
+            """;
         Assertions.assertEquals(expectedMessage, response.getMessage());
     }
 
     /**
-     * Тестирует предотвращение регистрации с дублирующимся логином.
-     * Проверяет сообщение об ошибке при повторной регистрации.
+     * Тестирует попытку зарегистрировать двух пользователей с одинаковыми логинами
      */
     @Test
     void testDuplicateRegistration() {
@@ -377,13 +370,12 @@ public class MessageHandlerTests {
         BotResponse response = messageHandler.processUserInput("user", secondUserId, PLATFORM_TYPE);
 
         Assertions.assertEquals("""
-                Пользователь с таким логином уже существует.
-                Используйте другой логин или войдите с помощью /integration.""", response.getMessage());
+                    Пользователь с таким логином уже существует.
+                    Используйте другой логин или войдите с помощью /integration.""", response.getMessage());
     }
 
     /**
-     * Тестирует вход с несуществующим логином.
-     * Проверяет сообщение об ошибке.
+     * Тестирует попытку входа с несуществующим логином
      */
     @Test
     void testIntegrationWithWrongUsername() {
@@ -392,14 +384,13 @@ public class MessageHandlerTests {
         BotResponse step2 = messageHandler.processUserInput("nonexistent_user", userId, PLATFORM_TYPE);
 
         Assertions.assertEquals("""
-                Пользователь 'nonexistent_user' не найден.
-                Проверьте логин или зарегистрируйтесь с помощью /registration.
-                """, step2.getMessage());
+                    Пользователь 'nonexistent_user' не найден.
+                    Проверьте логин или зарегистрируйтесь с помощью /registration.
+                    """, step2.getMessage());
     }
 
     /**
-     * Тестирует вход с неверным паролем.
-     * Проверяет сообщение об ошибке аутентификации.
+     * Тестирует попытку входа с неправильным паролем
      */
     @Test
     void testIntegrationWithWrongPassword() {
@@ -417,4 +408,221 @@ public class MessageHandlerTests {
         Assertions.assertEquals("Неверный пароль. Попробуйте снова.", response.getMessage());
     }
 
+
+    /**
+     * Тестирует добавление подзадачи к задаче
+     */
+    @Test
+    void testAddSubtask() {
+        String userId = "subtask_user_vika";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Основная задача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Основная задача\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse tasksBeforeResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+        """, tasksBeforeResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Основная задача
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtask - добавить подзадачу
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи    
+        """, expandResponse.getMessage());
+
+        BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Отлично! Напишите подзадачу для добавления:", addSubtaskResponse.getMessage());
+
+        BotResponse resultResponse = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Подзадача добавлена", resultResponse.getMessage());
+
+        BotResponse finishResponse = messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Добавление подзадач завершено! Вы можете посмотреть список задач.", finishResponse.getMessage());
+
+        BotResponse tasksAfterResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+         1.1 Первая подзадача
+        """, tasksAfterResponse.getMessage());
+    }
+
+    /**
+     * Тестирует удаление подзадачи.
+     */
+    @Test
+    void testDeleteSubtask() {
+        String userId = "subtask_user_vika";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Основная задача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Основная задача\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse tasksBeforeResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+        """, tasksBeforeResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Основная задача
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtask - добавить подзадачу
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи    
+        """, expandResponse.getMessage());
+
+        BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Отлично! Напишите подзадачу для добавления:", addSubtaskResponse.getMessage());
+
+        BotResponse resultResponse = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Подзадача добавлена", resultResponse.getMessage());
+
+        messageHandler.processUserInput("/delete_subtask", userId, PLATFORM_TYPE);
+        BotResponse response = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+
+        Assertions.assertEquals("Подзадача удалена.", response.getMessage());
+
+        BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+        """, tasksResponse.getMessage());
+    }
+
+    /**
+     * Тестирует изменение подзадачи
+     */
+    @Test
+    void testEditSubtask() {
+        String userId = "subtask_user_vika";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Основная задача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Основная задача\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse tasksBeforeResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+        """, tasksBeforeResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Основная задача
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtask - добавить подзадачу
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи    
+        """, expandResponse.getMessage());
+
+        BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Отлично! Напишите подзадачу для добавления:", addSubtaskResponse.getMessage());
+
+        BotResponse resultResponse = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Подзадача добавлена", resultResponse.getMessage());
+
+        messageHandler.processUserInput("/edit_subtask", userId, PLATFORM_TYPE);
+        messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+
+        BotResponse response = messageHandler.processUserInput("Первая измененная подзадача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Подзадача изменена.", response.getMessage());
+
+        messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
+        BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+         1.1 Первая измененная подзадача
+        """, tasksResponse.getMessage());
+    }
+
+    /**
+     * Тестирует завершение режима расширения задачи
+     */
+    @Test
+    void testFinishExpand() {
+        String userId = "subtask_user_vika";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Основная задача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Основная задача\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse tasksBeforeResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+        """, tasksBeforeResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Основная задача
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtask - добавить подзадачу
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи    
+        """, expandResponse.getMessage());
+
+        BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Отлично! Напишите подзадачу для добавления:", addSubtaskResponse.getMessage());
+
+        BotResponse resultResponse = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Подзадача добавлена", resultResponse.getMessage());
+
+        BotResponse finishResponse = messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Добавление подзадач завершено! Вы можете посмотреть список задач.", finishResponse.getMessage());
+
+        BotResponse tasksAfterResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+         1.1 Первая подзадача
+        """, tasksAfterResponse.getMessage());
+
+        BotResponse response = messageHandler.processUserInput("/add Полить цветы", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", response.getMessage());
+
+        BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Основная задача
+         1.1 Первая подзадача
+        2. Полить цветы
+        """, tasksResponse.getMessage());
+    }
 }
+
