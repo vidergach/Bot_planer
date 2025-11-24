@@ -2,162 +2,231 @@ package org.example;
 
 import java.io.File;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Основной обработчик сообщений для бота планировщика задач.
- * Класс обрабатывает команды и управляет данными пользователей.
- * Поддерживает авторизацию, регистрацию и все операции с задачами
+ * Основной класс для обработки сообщений пользователя и управления задачами.
+ * Обеспечивает взаимодействие между пользовательским интерфейсом и системой хранения данных.
+
+ * @see DatabaseService
+ * @see FileWork
  */
 public class MessageHandler {
-    private final Map<String, UserData> userDataMap = new ConcurrentHashMap<>();
+    private final DatabaseService databaseService;
     private final Map<String, AuthState> authStates = new ConcurrentHashMap<>();
+    private final Map<String, Operation> operationStates = new ConcurrentHashMap<>();
+    private final Map<String, ExpandState> expandStates = new ConcurrentHashMap<>();
     private final FileWork fileWork = new FileWork();
-    private final UserManager userManager = new UserManager();
 
     /**
-     * Класс для отслеживания аутентификации пользователя.
-     * Хранит информацию о регистрации.
+     * Конструктор по умолчанию, инициализирует сервис базы данных.
+     */
+    public MessageHandler() {
+        this.databaseService = new DatabaseService();
+    }
+
+    /**
+     * Конструктор по умолчанию для тестирования
+     */
+    public MessageHandler(DatabaseService databaseService) {
+        this.databaseService = databaseService;
+    }
+
+    /**
+     * Внутренний класс для отслеживания состояния аутентификации пользователя.
      */
     private class AuthState {
         String type;
         String username;
         String step;
+        String platformType;
 
-        AuthState(String type) {
+        AuthState(String type, String platformType) {
             this.type = type;
             this.step = "username";
+            this.platformType = platformType;
         }
     }
 
     /**
-     * Вспомогательный класс, разделяет ввод пользователя на команду и параметры.
+     * Внутренний класс для отслеживания состояния работы с подзадачами.
      */
-    private class CommandParts {
-        private final String command;
-        private final String parameter;
+    private class ExpandState {
+        Integer taskId;
+        String taskText;
+        String step;
+        String selectSubtask;
 
-        /**
-         * Создает части команды.
-         *
-         * @param command основная команда
-         * @param parameter параметры команды
-         */
-        public CommandParts(String command, String parameter) {
-            this.command = command;
-            this.parameter = parameter;
+        ExpandState(Integer taskId, String taskText) {
+            this.taskId = taskId;
+            this.taskText = taskText;
+            this.step = null;
         }
-        public String getCommand() { return command; }
-        public String getParameter() { return parameter; }
     }
 
-    private static final String WELCOME_MESSAGE = """ 
+    private static final String WELCOME_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
-            
-            ⚠️ Для начала работы необходимо авторизоваться:
-            /registration - зарегистрироваться
-            /login - войти в существующий аккаунт
-            /exit - выйти из аккаунта
-            
+
+            Для начала работы необходимо авторизоваться:
+            /registration - Регистрация
+            /login - Войти в аккаунт
+            /exit - Выйти из аккаунта
+
             После авторизации вы сможете использовать все функции планировщика!
             """;
 
-    private static final String START_MESSAGE = """ 
+    private static final String START_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             Я могу организовывать ваши задачи.
-            
+            Можете воспользоваться кнопками для удобства)
+
             Команды:
             /add - добавить задачу
             /tasks - показать список задач
             /done - отметить выполненной
             /dTask - список выполненных задач
             /delete - удалить задачу
+            /expand - расширить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
             /exit - выйти из аккаунта
             /help - помощь
+            
+            Команды для подзадач:
+            /add_subtask - добавить подзадачу
+            /delete_subtask - удалить подзадачу
+            /edit_subtask - изменить подзадачу
+            /finish_subtask - окончить расширение задачи
             """;
 
-    private static final String HELP_MESSAGE = """ 
+    private static final String HELP_MESSAGE = """
             Справка по работе:
             Я планировщик задач😊 📝
-            Мои команды:
-            /add - добавить задачу
-            /tasks - показать список задач
-            /done - отметить выполненной
-            /dTask - список выполненных задач
-            /delete - удалить задачу
-            /export - предоставить список задач пользователя в файле
-            /import - загрузить список задач из файла
-            /exit - выйти из аккаунта
-            /help - помощь
+            Используйте кнопки:
+            \uD83D\uDCDD Регистрация
+            Войти в аккаунт
+            \u2795 Добавить задачу
+            \uD83D\uDCDD Показать список задач
+            Расширить задачу
+            \u2714 Выполнено
+            \u2705 Список выполненных задач
+            \u2718 Удалить
+            Экспорт - предоставить список задач пользователя в файле
+            Импорт - загрузить список задач из файла
+            Выйти из аккаунта
+            Помощь
             
+            Команды для подзадач:
+            \u2796 Добавить подзадачу
+            \u2718 Удалить подзадачу
+            Изменить подзадачу
+            Окончить расширение
+
             Например:
-            /add Полить цветы
+            \u2795 Добавить задачу
+            - Полить цветы
             - Задача "Полить цветы" добавлена!
-            
-            /add Накормить кота
+
+            \u2795 Добавить задачу
+            - Накормить кота
             - Задача "Накормить кота" добавлена!
-            
-            /add Полить цветы
+
+            \u2795 Добавить задачу
+            - Полить цветы
             - Задача "Полить цветы" уже есть в списке!
-            
-            /tasks
+
+            \uD83D\uDCDD Показать список задач
             - Вот список ваших задач:
               1. Полить цветы
               2. Накормить кота
-            
-            /done Полить цветы
+
+            \u2714 Выполнено
+            - Полить цветы
             - Задача "Полить цветы" отмечена выполненной!
-            
-            /dTask
+
+            \u2705 Список выполненных задач
             - ✅ Вот список выполненных задач:
               1. Полить цветы ✔
-            
-            /delete Накормить кота
+
+            \u2718 Удалить
+            - Накормить кота
             - 🗑️ Задача "Накормить кота" удалена из списка задач!
-            
-            /export 'tasks_list.json'
+
+            Экспорт
+            - Напишите имя файла для экспорта
+            - 'tasks_list.json'
             - Ваш список задач в виде документа (отправка "tasks_list.json")
-            
-            /import
+
+            Импорт
             - Отправьте JSON файл со списком задач
             - (отправка "tasks_list.json")
             - Задачи успешно добавлены, можете проверить списки с помощью команд /tasks и /dTask
             """;
 
+    private final String SUBTASK_MESSAGE = """
+            Отлично! Выберите действие, которое хотите сделать:
+            /add_subtask - добавить подзадачу
+            /delete_subtask - удалить подзадачу
+            /edit_subtask - изменить подзадачу
+            /finish_expand - окончить расширение задачи    
+            """;
+
+    /**
+     * Внутренний класс для отслеживания состояния операции.
+     */
+    private class Operation {
+        String type;
+        Operation(String type) {
+            this.type = type;
+        }
+    }
+
     /**
      * Основной метод обработки пользовательского ввода.
-     * Теперь возвращает структурированный BotResponse
      *
-     *  @param userInput текст сообщения от пользователя
-     *  @param userId идентификатор пользователя
-     *  @return ответ бота
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
      */
-    public BotResponse processUserInput(String userInput, String userId) {
-        System.out.println("сообщение: " + userInput + " от: " + userId);
+    public BotResponse processUserInput(String userInput, String userId, String platformType) {
+        System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
         try {
-            if (!isUserAuthenticated(userId)) {
-                if (!authStates.containsKey(userId)) {
-                    CommandParts parts = parseCommand(userInput);
-                    String command = parts.getCommand();
-
-                    if (command.equals("/registration") ||
-                            command.equals("/login")) {
-                        return processCommand(command, parts.getParameter(), userId);
-                    } else {
-                        return new BotResponse(WELCOME_MESSAGE);
-                    }
-                } else {
-                    return handleAuthStep(userId, userInput);
+            if (expandStates.containsKey(userId)) {
+                ExpandState state = expandStates.get(userId);
+                if (state.step != null) {
+                    return handleSubtaskCommand(userInput, userId);
                 }
             }
-            CommandParts parts = parseCommand(userInput);
-            String command = parts.getCommand();
-            String parameter = parts.getParameter();
-            return processCommand(command, parameter, userId);
+
+            if (operationStates.containsKey(userId)) {
+                return handleOperationStep(userId, userInput);
+            }
+
+            if (authStates.containsKey(userId)) {
+                return handleAuthStep(userId, userInput);
+            }
+
+            String[] parts = userInput.trim().split("\\s+", 2);
+            String command = parts[0];
+            String parameter = parts.length > 1 ? parts[1].trim() : "";
+
+            if (!isUserAuthenticated(userId, platformType)) {
+                if (command.equals("/registration") || command.equals("/login")) {
+                    if (command.equals("/registration")) {
+                        return handleRegistration(userId, platformType);
+                    } else if (command.equals("/login")){
+                        return handleLogin(userId, platformType);
+                    } else {
+                        return handleExit(userId, platformType);
+                    }
+                }
+                return new BotResponse(WELCOME_MESSAGE);
+            }
+            return processCommand(command, parameter,userId, platformType);
         } catch (Exception e) {
             e.printStackTrace();
             return new BotResponse("Произошла ошибка: " + e.getMessage());
@@ -165,98 +234,161 @@ public class MessageHandler {
     }
 
     /**
-     * Проверяет, авторизован ли пользователь
+     * Обрабатывает операцию, требующую дополнительного ввода от пользователя.
      *
+     * @param operation тип операции
+     * @param parameter параметр операции
      * @param userId идентификатор пользователя
-     * @return true если пользователь авторизован, false в противном случае
+     * @param prompt сообщение для пользователя
+     * @return ответ бота
      */
-    private boolean isUserAuthenticated(String userId) {
-        String username = userManager.getUsername(userId);
-        return username != null && !username.trim().isEmpty();
-    }
-
-    /**
-     * Обрабатывает импорт задач из файла
-     * считывает задачи из входного потока (JSON файла) и добавляет их в список
-     * задач пользователя.
-     *
-     * @param inputStream поток данных из загруженного файла
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом импорта
-     */
-    public BotResponse processImport(InputStream inputStream, String userId) {
-        try {
-            UserData userData = getUserData(userId);
-            FileWork.FileData result = fileWork.importData(inputStream);
-            for (String task : result.current_tasks()) {
-                if (!userData.getTasks().contains(task) && !userData.getCompletedTasks().contains(task)) {
-                    userData.addTask(task);
-                }
-            }
-            for (String task : result.completed_tasks()) {
-                if (!userData.getCompletedTasks().contains(task)) {
-                    if (userData.getTasks().contains(task)) {
-                        userData.markTaskDone(task);
-                    } else if (!userData.getCompletedTasks().contains(task)) {
-                        userData.addTask(task);
-                        userData.markTaskDone(task);
-                    }
-                }
-            }
-            return new BotResponse("""
-                    Задачи успешно добавлены,
-                    можете проверить списки с помощью команд /tasks и /dTask
-                    """);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new BotResponse("Ошибка при импорте: " + e.getMessage());
+    private BotResponse handleOperation(String operation, String parameter, String userId, String prompt) {
+        if (parameter.isEmpty()) {
+            operationStates.put(userId, new Operation(operation));
+            return new BotResponse(prompt);
+        } else {
+            return executeOperation(operation, parameter, userId);
         }
     }
 
     /**
-     * Разделяет строку ввода по первому пробелу. Первое слово считается командой,
-     * остальная часть - параметрами.
+     * Обрабатывает операции после получения ввода.
      *
+     * @param userId идентификатор пользователя
      * @param userInput ввод пользователя
-     * @return разобранные части команды
+     * @return ответ бота
      */
-    private CommandParts parseCommand(String userInput) {
-        if (userInput.isBlank()) {
-            return new CommandParts("", "");
-        }
-        String trimmedInput = userInput.trim();
-        String[] parts = trimmedInput.split("\\s+", 2);
-        String command = parts[0];
-        String parameter = parts.length > 1 ? parts[1].trim() : "";
-        return new CommandParts(command, parameter);
+    private BotResponse handleOperationStep(String userId, String userInput) {
+        Operation state = operationStates.get(userId);
+        operationStates.remove(userId);
+        return executeOperation(state.type, userInput.trim(), userId);
     }
 
     /**
-     * Выполняет соответствующую операцию в зависимости от команды и возвращает результат.
+     * Выполняет указанную операцию.
      *
-     * @param command команда для выполнения
-     * @param parameter параметры команды
+     * @param operation тип операции
+     * @param input ввод пользователя
      * @param userId идентификатор пользователя
-     * @return ответ с результатом выполнения команды
+     * @return ответ бота
      */
-    private BotResponse processCommand(String command, String parameter, String userId) {
+    private BotResponse executeOperation(String operation, String input, String userId) {
         try {
-            return switch (command) {
-                case "/start" -> new BotResponse(START_MESSAGE);
-                case "/help" -> new BotResponse(HELP_MESSAGE);
-                case "/add" -> handleAddTask(parameter, userId);
-                case "/tasks" -> handleShowTasks(userId);
-                case "/done" -> handleMarkTaskDone(parameter, userId);
-                case "/dTask" -> handleShowCompletedTasks(userId);
-                case "/delete" -> handleDeleteTask(parameter, userId);
-                case "/registration" -> startRegistration(userId);
-                case "/login" -> startLogin(userId);
-                case "/exit" -> handleExit(userId);
-                case "/export" -> handleExport(parameter, userId);
-                case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
+            String internalUserId = databaseService.getUserIdByPlatform(userId);
+            if (internalUserId == null) {
+                return new BotResponse("Пользователь не авторизован");
+            }
+            return switch (operation) {
+                case "add" -> {
+                    databaseService.addTask(internalUserId, input);
+                    yield new BotResponse("Задача \"" + input + "\" добавлена!");
+                }
+                case "delete" -> {
+                    databaseService.deleteTask(internalUserId, input);
+                    yield new BotResponse("🗑️ Задача \"" + input + "\" удалена!");
+                }
+                case "done" -> {
+                    databaseService.markTaskDone(internalUserId, input);
+                    yield new BotResponse("✅ Задача \"" + input + "\" выполнена!");
+                }
+                case "export" -> {
+                    DatabaseService.TaskData taskData = databaseService.exportTasks(internalUserId);
+                    File exportFile = fileWork.export(taskData.getCurrentTasks(), taskData.getCompletedTasks(), input);
+                    yield new BotResponse("Ваши задачи экспортированы в файл: " + exportFile.getName(), exportFile, exportFile.getName());
+                }
                 default -> new BotResponse("""
                         Неизвестная команда.
                         Введите /help для просмотра доступных команд.""");
+            };
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка " + getOperationError(operation) + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Возвращает ошибки для операции.
+     *
+     * @param operation тип операции
+     * @return описание ошибки
+     */
+    private String getOperationError(String operation) {
+        return switch (operation) {
+            case "add" -> "добавления задачи";
+            case "delete" -> "удаления задачи";
+            case "done" -> "выполнения задачи";
+            case "export" -> "экспорта";
+            default -> "операции";
+        };
+    }
+
+    /**
+     * Обрабатывает команду пользователя.
+     *
+     * @param command команда
+     * @param parameter параметр команды
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
+    private BotResponse processCommand(String command, String parameter, String userId, String platformType) {
+        try {
+            String internalUserId = databaseService.getUserIdByPlatform(userId);
+            if (internalUserId == null) {
+                return new BotResponse("Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.");
+            }
+
+            if (command.equals("/add_subtask") || command.equals("/delete_subtask") ||
+                    command.equals("/edit_subtask") || command.equals("/finish_expand") ||
+                    command.equals("\u2795 Добавить подзадачу") || command.equals("\u2718 Удалить подзадачу") ||
+                    command.equals("Изменить подзадачу") || command.equals("Окончить расширение")) {
+                return handleSubtaskCommand(command, userId);
+            }
+
+            if (expandStates.containsKey(userId)) {
+                return handleSubtaskCommand(command, userId);
+            }
+            if (command.matches("\\d+")) {
+                List<String> tasks = databaseService.getCurrentTasks(internalUserId);
+                int taskNumber = Integer.parseInt(command);
+                if (taskNumber >= 1 && taskNumber <= tasks.size()) {
+                    return handleExpandCommand(userId, command, internalUserId);
+                }
+            }
+
+            if (command.equals("/expand") || command.equals("Расширить задачу")) {
+                String full = command + (parameter.isEmpty() ? "" : " " + parameter);
+                return handleExpandCommand(userId, full, internalUserId);
+            }
+            return switch (command) {
+                case "/start" -> new BotResponse(START_MESSAGE);
+                case "/help" -> new BotResponse(HELP_MESSAGE);
+                case "/add" -> handleOperation("add", parameter, userId,
+                        """
+                                Введите задачу для добавления:
+                                Например: Купить молоко""");
+                case "/tasks" -> handleShowTasks(internalUserId);
+                case "/done" -> handleOperation("done", parameter, userId,
+                        """
+                                Введите название задачи для отметки выполнения:
+                                Например: Купить молоко""");
+                case "/dTask" -> handleShowCompletedTasks(internalUserId);
+                case "/delete" -> handleOperation("delete", parameter, userId,
+                        """
+                                Введите название задачи для удаления:
+                                Например: Купить молоко""");
+                case "/registration" -> handleRegistration(userId, platformType);
+                case "/login" -> handleLogin(userId, platformType);
+                case "/exit" -> handleExit(userId, platformType);
+                case "/export" -> handleOperation("export", parameter, userId,
+                        """
+                                Напишите имя файла для экспорта
+                                Например: 'list'""");
+                case "/import" -> new BotResponse("Для импорта отправьте JSON файл с задачами");
+                default -> new BotResponse("""
+                                        Неизвестная команда.
+                                        Введите /help для просмотра доступных команд.
+                                        """);
             };
         } catch (Exception e) {
             e.printStackTrace();
@@ -265,136 +397,105 @@ public class MessageHandler {
     }
 
     /**
-     * Обрабатывает добавление новой задачи.
+     * Обрабатывает импорт задач из файла.
      *
-     * @param parameter описание задачи
+     * @param inputStream поток ввода с файлом задач
      * @param userId идентификатор пользователя
-     * @return ответ с результатом операции
+     * @return ответ бота с результатом импорта
      */
-    private BotResponse handleAddTask(String parameter, String userId) {
-        if (parameter.isEmpty()) {
+    public BotResponse processImport(InputStream inputStream, String userId) {
+        try {
+            String internalUserId = databaseService.getUserIdByPlatform(userId);
+            if (internalUserId == null) {
+                return new BotResponse("Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.");
+            }
+            FileWork.FileData importedData = fileWork.importData(inputStream);
+            for (String task : importedData.current_tasks()) {
+                try {
+                    databaseService.addTask(internalUserId, task);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            for (String task : importedData.completed_tasks()) {
+                try {
+                    databaseService.markTaskDone(internalUserId, task);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             return new BotResponse("""
-                    Укажите задачу после /add
-                    Например: /add Купить молоко""");
-        }
-        try {
-            getUserData(userId).addTask(parameter);
-            return new BotResponse("Задача \"" + parameter + "\" добавлена!");
-        } catch (IllegalStateException e) {
-            return new BotResponse(e.getMessage());
-        }
-    }
-
-    /**
-     * Обрабатывает отображение списка текущих задач.
-     *
-     * @param userId идентификатор пользователя
-     * @return ответ со списком задач
-     */
-    private BotResponse handleShowTasks(String userId) {
-        UserData userData = getUserData(userId);
-        if (!userData.hasTasks()) {
-            return new BotResponse("📝 Список задач пуст!");
-        }
-        List<String> tasks = userData.getTasks();
-        StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
-        for (int i = 0; i < tasks.size(); i++) {
-            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
-        }
-        return new BotResponse(sb.toString());
-    }
-
-    /**
-     * Обрабатывает отметку задачи как выполненной.
-     *
-     * @param parameter описание задачи для отметки
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом операции
-     */
-    private BotResponse handleMarkTaskDone(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("""
-                    Укажите задачу после /done
-                    Например: /done Купить молоко""");
-        }
-        try {
-            getUserData(userId).markTaskDone(parameter);
-            return new BotResponse("✅ Задача \"" + parameter + "\" выполнена!");
-        } catch (IllegalStateException e) {
-            return new BotResponse(e.getMessage());
-        }
-    }
-
-    /**
-     * Обрабатывает отображение списка выполненных задач.
-     *
-     * @param userId идентификатор пользователя
-     * @return ответ со списком выполненных задач
-     */
-    private BotResponse handleShowCompletedTasks(String userId) {
-        UserData userData = getUserData(userId);
-        if (!userData.hasCompletedTasks()) {
-            return new BotResponse("✅ Список выполненных задач пуст!");
-        }
-        List<String> completedTasks = userData.getCompletedTasks();
-        StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
-        for (int i = 0; i < completedTasks.size(); i++) {
-            sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
-        }
-        return new BotResponse(sb.toString());
-    }
-
-    /**
-     * Обрабатывает удаление задачи из списка.
-     *
-     * @param parameter описание задачи для удаления
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом операции
-     */
-    private BotResponse handleDeleteTask(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("""
-                    Укажите задачу после /delete
-                    Например: /delete Купить молоко""");
-        }
-        try {
-            getUserData(userId).deleteTask(parameter);
-            return new BotResponse("🗑️ Задача \"" + parameter + "\" удалена!");
-        } catch (IllegalStateException e) {
-            return new BotResponse(e.getMessage());
-        }
-    }
-
-    /**
-     * Обрабатывает экспорт задач в файл.
-     *
-     * @param parameter имя файла для экспорта
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом операции и файлом для отправки
-     */
-    private BotResponse handleExport(String parameter, String userId) {
-        if (parameter.isEmpty()) {
-            return new BotResponse("Напишите имя файла после /export");
-        }
-        try {
-            UserData userData = getUserData(userId);
-            File exportFile = fileWork.export(userData.getTasks(), userData.getCompletedTasks(), parameter.trim());
-            return new BotResponse("Ваши задачи экспортированы в файл: "
-                    + exportFile.getName(), exportFile, exportFile.getName());
+                    Импорт завершен успешно!
+                    Можете проверить списки с помощью команд /tasks и /dTask
+                    """);
         } catch (Exception e) {
             e.printStackTrace();
-            return new BotResponse("Ошибка экспорта: " + e.getMessage());
+            return new BotResponse("Ошибка при импорте: " + e.getMessage());
         }
     }
 
     /**
-     * Начинает процесс регистрации нового пользователя.
+     * Обрабатывает текущие задачи пользователя.
+     *
+     * @param internalUserId идентификатор пользователя
+     * @return ответ бота
+     */
+    private BotResponse handleShowTasks(String internalUserId) {
+        try {
+            List<String> tasks = databaseService.getCurrentTasks(internalUserId);
+            if (tasks.isEmpty()) {
+                return new BotResponse("📝 Список задач пуст!");
+            }
+            StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
+            for (int i = 0; i < tasks.size(); i++) {
+                sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
+                Integer taskId = databaseService.getTaskId(internalUserId, tasks.get(i));
+                if (taskId != null) {
+                    List<String> subtasks = databaseService.getSubtasks(taskId);
+                    for (int j = 0; j < subtasks.size(); j++) {
+                        sb.append(" ").append(i + 1).append(".").append(j + 1).append(" ").append(subtasks.get(j)).append("\n");
+                    }
+                }
+            }
+            return new BotResponse(sb.toString());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при получении задач: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Обрабатывает выполненные задачи пользователя.
+     *
+     * @param internalUserId идентификатор пользователя
+     * @return ответ бота
+     */
+    private BotResponse handleShowCompletedTasks(String internalUserId) {
+        try {
+            List<String> completedTasks = databaseService.getCompletedTasks(internalUserId);
+            if (completedTasks.isEmpty()) {
+                return new BotResponse("✅ Список выполненных задач пуст!");
+            }
+            StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
+            for (int i = 0; i < completedTasks.size(); i++) {
+                sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
+            }
+            return new BotResponse(sb.toString());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при получении выполненных задач: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Обрабатывает команду регистрации.
      *
      * @param userId идентификатор пользователя
-     * @return ответ с запросом логина
+     * @param platformType тип платформы
+     * @return ответ бота
      */
-    private BotResponse startRegistration(String userId) {
-        authStates.put(userId, new AuthState("registration"));
+    private BotResponse handleRegistration(String userId, String platformType) {
+        authStates.put(userId, new AuthState("registration", platformType));
         return new BotResponse("""
                 📝 Регистрация нового пользователя
                 Введите логин:
@@ -402,13 +503,14 @@ public class MessageHandler {
     }
 
     /**
-     * Начинает процесс входа в существующий аккаунт.
+     * Обрабатывает команду входа в аккаунт.
      *
      * @param userId идентификатор пользователя
-     * @return ответ с запросом логина
+     * @param platformType тип платформы
+     * @return ответ бота
      */
-    private BotResponse startLogin(String userId) {
-        authStates.put(userId, new AuthState("integration"));
+    private BotResponse handleLogin(String userId, String platformType) {
+        authStates.put(userId, new AuthState("integration", platformType));
         return new BotResponse("""
                 🔑 Вход в аккаунт
                 Введите логин:
@@ -419,47 +521,56 @@ public class MessageHandler {
      * Обрабатывает выход пользователя из аккаунта.
      *
      * @param userId идентификатор пользователя
+     * @param platformType тип платформы
      * @return ответ с результатом операции
      */
-    private BotResponse handleExit(String userId) {
-        String username = userManager.getUsername(userId);
-        if (username == null) {
-            return new BotResponse("Вы не авторизованы");
+    private BotResponse handleExit(String userId, String platformType) {
+        try {
+            if (isUserAuthenticated(userId, platformType)) {
+                if (databaseService.logoutUser(userId, platformType)) {
+                    return new BotResponse("""
+                            ✅ Вы успешно вышли из аккаунта.
+                            
+                            Для продолжения работы:
+                            /registration - зарегистрироваться
+                            /login - войти в существующий аккаунт
+                            """);
+                }
+            }
+            return new BotResponse("Вы не авторизованы.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при выходе из аккаунта: " + e.getMessage());
         }
-        userManager.outUser(userId);
-        return new BotResponse("""
-                Вы вышли из аккаунта.
-                
-                Для продолжения работы:
-                /registration - зарегистрироваться
-                /login - войти в существующий аккаунт
-                """);
     }
+
     /**
-     * Обрабатывает шаг процесса аутентификации.
+     * Обрабатывает шаг аутентификации.
      *
      * @param userId идентификатор пользователя
-     * @param userInput ввод пользователя (логин или пароль)
-     * @return ответ с запросом следующего шага или результатом аутентификации
+     * @param userInput ввод пользователя
+     * @return ответ бота
      */
     private BotResponse handleAuthStep(String userId, String userInput) {
         AuthState state = authStates.get(userId);
+
         if ("username".equals(state.step)) {
             return processUsernameStep(state, userInput, userId);
         } else if ("password".equals(state.step)) {
             return processPasswordStep(state, userInput, userId);
         }
+
         authStates.remove(userId);
         return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
     }
 
     /**
-     * Обрабатывает ввод логина в процессе аутентификации.
+     * Обрабатывает шаг ввода логина при аутентификации.
      *
-     * @param state текущее состояние аутентификации
-     * @param userInput введенный логин
+     * @param state состояние аутентификации
+     * @param userInput ввод пользователя
      * @param userId идентификатор пользователя
-     * @return ответ с запросом пароля или сообщением об ошибке
+     * @return ответ бота
      */
     private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
         if (userInput.trim().isEmpty()) {
@@ -469,136 +580,100 @@ public class MessageHandler {
                     """);
         }
         String username = userInput.trim();
-        if ("registration".equals(state.type) && userManager.isUserRegistered(username)) {
+        try {
+            if ("registration".equals(state.type)) {
+                if (databaseService.userExists(username)) {
+                    authStates.remove(userId);
+                    return new BotResponse("""
+                            Пользователь с таким логином уже существует.
+                            Используйте другой логин или войдите с помощью /integration.""");
+                }
+            } else if ("integration".equals(state.type)) {
+                if (!databaseService.userExists(username)) {
+                    authStates.remove(userId);
+                    return new BotResponse("""
+                            Пользователь '%s' не найден.
+                            Проверьте логин или зарегистрируйтесь с помощью /registration.
+                            """.formatted(username));
+                }
+            }
+            state.username = username;
+            state.step = "password";
+            return new BotResponse("✅Отлично! Теперь введите пароль:");
+        } catch (SQLException e) {
+            e.printStackTrace();
             authStates.remove(userId);
-            return new BotResponse("""
-                    Пользователь с таким логином уже существует.
-                    Используйте другой логин или войдите с помощью /integration.""");
+            return new BotResponse("Ошибка проверки пользователя: " + e.getMessage());
         }
-        if ("integration".equals(state.type) && !userManager.isUserRegistered(username)) {
-            authStates.remove(userId);
-            return new BotResponse("""
-                    Пользователь '%s' не найден.
-                    Проверьте логин или зарегистрируйтесь с помощью /registration."""
-                    .formatted(username));
-        }
-        state.username = username;
-        state.step = "password";
-        return new BotResponse("✅Отлично! Теперь введите пароль:");
     }
 
     /**
-     * Обрабатывает ввод пароля в процессе аутентификации.
+     * Обрабатывает шаг ввода пароля при аутентификации.
      *
-     * @param state текущее состояние аутентификации
-     * @param userInput введенный пароль
+     * @param state состояние аутентификации
+     * @param userInput ввод пользователя
      * @param userId идентификатор пользователя
-     * @return ответ с результатом аутентификации
+     * @return ответ бота с результатом аутентификации
      */
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
-        authStates.remove(userId);
+        if (password.isEmpty()) {
+            return new BotResponse("""
+                Пароль не может быть пустым.
+                Введите пароль:
+                """);
+        }
         try {
             if ("registration".equals(state.type)) {
-                return completeRegistration(state, password, userId);
+                if (databaseService.registerUser(state.username, password)) {
+                    databaseService.authenticateUser(state.username, password, state.platformType, userId);
+                    authStates.remove(userId);
+                    return new BotResponse(String.format("""
+                        ✅ Регистрация завершена успешно!
+                        Добро пожаловать, %s!
+                        %s""", state.username, START_MESSAGE));
+                } else {
+                    authStates.remove(userId);
+                    return new BotResponse("""
+                        Ошибка регистрации.
+                        Попробуйте снова: /registration""");
+                }
             } else {
-                return completeLogin(state, password, userId);
+                if (databaseService.authenticateUser(state.username, password, state.platformType, userId)) {
+                    authStates.remove(userId);
+                    return new BotResponse(String.format("""
+                        ✅ Вход выполнен успешно!
+                        Добро пожаловать обратно, %s
+                        
+                        %s""", state.username, START_MESSAGE));
+                } else {
+                    authStates.remove(userId);
+                    return new BotResponse("Неверный пароль. Попробуйте снова.");
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
+            authStates.remove(userId);
             return new BotResponse("Ошибка при авторизации: " + e.getMessage());
         }
     }
 
     /**
-     * Завершает процесс регистрации нового пользователя.
-     *
-     * @param state состояние аутентификации
-     * @param password введенный пароль
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом регистрации
-     */
-    private BotResponse completeRegistration(AuthState state, String password, String userId) {
-        if (userManager.registerUser(state.username, password)) {
-            userManager.authenticateUser(state.username, password, userId);
-            synchronizeUserData(userId, state.username);
-            return new BotResponse("""
-                    ✅ Регистрация прошла успешно!
-                    """);
-        }
-        return new BotResponse("Ошибка регистрации. Попробуйте снова.");
-    }
-
-    /**
-     * Завершает процесс входа в аккаунт.
-     *
-     * @param state состояние аутентификации
-     * @param password введенный пароль
-     * @param userId идентификатор пользователя
-     * @return ответ с результатом входа
-     */
-    private BotResponse completeLogin(AuthState state, String password, String userId) {
-        if (userManager.authenticateUser(state.username, password, userId)) {
-            synchronizeUserData(userId, state.username);
-            return new BotResponse("""
-                    ✅ Вход выполнен успешно!
-                    Данные синхронизированы.
-                    
-                    Добро пожаловать обратно!""");
-        }
-        return new BotResponse("Неверный пароль. Попробуйте снова.");
-    }
-
-    /**
-     * Получает данные пользователя с учетом его авторизации.
+     * Проверяет, аутентифицирован ли пользователь.
      *
      * @param userId идентификатор пользователя
-     * @return объект UserData пользователя
+     * @param platformType тип платформы
+     * @return true если пользователь аутентифицирован, false в противном случае
      */
-    private UserData getUserData(String userId) {
-        String username = userManager.getUsername(userId);
-        String dataKey = username != null ? username : userId;
-
-        if (!userDataMap.containsKey(dataKey)) {
-            userDataMap.put(dataKey, new UserData());
+    private boolean isUserAuthenticated(String userId, String platformType) {
+        try {
+            return databaseService.getUsername(platformType, userId) != null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
-        return userDataMap.get(dataKey);
     }
 
-    /**
-     * Синхронизирует данные пользователя после успешной аутентификации.
-     *
-     * @param oldUserId старый идентификатор пользователя
-     * @param newUsername новое имя пользователя
-     */
-    private void synchronizeUserData(String oldUserId, String newUsername) {
-        UserData oldData = userDataMap.get(oldUserId);
-        UserData newData = getUserData(newUsername);
 
-        if (oldData == null || newData == null)
-            return;
 
-        for (String task : oldData.getTasks()) {
-            if (!newData.getTasks().contains(task) &&
-                    !newData.getCompletedTasks().contains(task)) {
-                try {
-                    newData.addTask(task);
-                } catch (IllegalStateException ignored) {}
-            }
-        }
-
-        for (String task : oldData.getCompletedTasks()) {
-            if (!newData.getCompletedTasks().contains(task)) {
-                try {
-                    if (newData.getTasks().contains(task)) {
-                        newData.markTaskDone(task);
-                    } else {
-                        newData.addTask(task);
-                        newData.markTaskDone(task);
-                    }
-                } catch (Exception ignored) {}
-            }
-        }
-        userDataMap.remove(oldUserId);
-    }
 }
