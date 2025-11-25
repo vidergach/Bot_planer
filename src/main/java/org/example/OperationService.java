@@ -82,21 +82,49 @@ public class OperationService {
         }
     }
 
+    /**
+     * Конструктор сервиса операций.
+     *
+     * @param databaseService сервис для работы с базой данных
+     * @param authService сервис для управления аутентификацией
+     */
     public OperationService(DatabaseService databaseService, AuthService authService) {
         this.databaseService = databaseService;
         this.authService = authService;
     }
 
+    /**
+     * Проверяет есть ли у пользователя незавершенная операция.
+     *
+     * @param userId идентификатор пользователя
+     * @return true если есть незавершенная операция, false в противном случае
+     */
     public boolean hasOperationState(String userId) {
         return operationStates.containsKey(userId);
     }
 
+    /**
+     * Обрабатывает следующий шаг операции с дополнительным вводом.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя
+     * @return ответ бота с результатом выполнения операции
+     */
     public BotResponse handleOperationStep(String userId, String userInput) {
         Operation state = operationStates.get(userId);
         operationStates.remove(userId);
         return executeOperation(state.type, userInput.trim(), userId);
     }
 
+    /**
+     * Обрабатывает команду пользователя.
+     *
+     * @param command команда
+     * @param parameter параметр
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с результатом выполнения команды
+     */
     BotResponse processCommand(String command, String parameter, String userId, String platformType) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
@@ -139,7 +167,15 @@ public class OperationService {
         }
     }
 
-
+    /**
+     * Обрабатывает операцию с дополнительным вводом.
+     *
+     * @param operation тип операции
+     * @param parameter параметр
+     * @param userId идентификатор пользователя
+     * @param prompt сообщение
+     * @return ответ бота
+     */
     private BotResponse handleOperation(String operation, String parameter, String userId, String prompt) {
         if (parameter.isEmpty()) {
             operationStates.put(userId, new Operation(operation));
@@ -149,6 +185,14 @@ public class OperationService {
         }
     }
 
+    /**
+     * Выполняет операцию.
+     *
+     * @param operation тип операции
+     * @param input ввод
+     * @param userId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse executeOperation(String operation, String input, String userId) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
@@ -183,6 +227,9 @@ public class OperationService {
         }
     }
 
+    /**
+     * Обрабатывает отображение текущих задач.
+     */
     private BotResponse handleShowTasks(String internalUserId) {
         try {
             List<String> tasks = databaseService.getCurrentTasks(internalUserId);
@@ -200,6 +247,9 @@ public class OperationService {
         }
     }
 
+    /**
+     * Обрабатывает отображение выполненных задач.
+     */
     private BotResponse handleShowCompletedTasks(String internalUserId) {
         try {
             List<String> completedTasks = databaseService.getCompletedTasks(internalUserId);
@@ -217,6 +267,12 @@ public class OperationService {
         }
     }
 
+    /**
+     * Возвращает ошибки для операции.
+     *
+     * @param operation тип операции
+     * @return описание ошибки операции
+     */
     private String getOperationError(String operation) {
         return switch (operation) {
             case "add" -> "добавления задачи";

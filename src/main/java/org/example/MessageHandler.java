@@ -14,6 +14,9 @@ public class MessageHandler {
     private final OperationService operationService;
     private final FileWork fileWork;
 
+    /**
+     * Конструктор по умолчанию, инициализирует все сервисы.
+     */
     public MessageHandler() {
         this.databaseService = new DatabaseService();
         this.authService = new AuthService(databaseService);
@@ -21,6 +24,9 @@ public class MessageHandler {
         this.fileWork = new FileWork();
     }
 
+    /**
+     * Конструктор для тестирования, принимает готовый сервис базы данных.
+     */
     public MessageHandler(DatabaseService databaseService) {
         this.databaseService = databaseService;
         this.authService = new AuthService(databaseService);
@@ -28,6 +34,14 @@ public class MessageHandler {
         this.fileWork = new FileWork();
     }
 
+    /**
+     * Основной метод обработки ввода.
+     *
+     * @param userInput ввод
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота
+     */
     public BotResponse processUserInput(String userInput, String userId, String platformType) {
         System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
         try {
@@ -62,6 +76,13 @@ public class MessageHandler {
         }
     }
 
+    /**
+     * Обрабатывает импорт задач из файла.
+     *
+     * @param inputStream файл
+     * @param userId идентификатор пользователя
+     * @return ответ бота 
+     */
     public BotResponse processImport(InputStream inputStream, String userId) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
