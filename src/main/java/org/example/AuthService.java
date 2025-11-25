@@ -11,6 +11,9 @@ public class AuthService {
     private final DatabaseService databaseService;
     private final Map<String, AuthState> authStates = new ConcurrentHashMap<>();
 
+    /**
+     * Сообщение приветствия для неавторизованных пользователей.
+     */
     public final String WELCOME_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
 
@@ -22,6 +25,9 @@ public class AuthService {
             После авторизации вы сможете использовать все функции планировщика!
             """;
 
+    /**
+     * Стартовое сообщение для авторизованных пользователей.
+     */
     public final String START_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             Я могу организовывать ваши задачи.
@@ -55,14 +61,27 @@ public class AuthService {
         }
     }
 
+    /**
+     * Конструктор сервиса аутентификации.
+    */
     public AuthService(DatabaseService databaseService) {
         this.databaseService = databaseService;
     }
 
+    /**
+     * Проверяет, находится ли пользователь в процессе аутентификации.
+     */
     public boolean hasAuthState(String userId) {
         return authStates.containsKey(userId);
     }
 
+    /**
+     * Обрабатывает следующий шаг процесса аутентификации.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя
+     * @return ответ бота
+     */
     public BotResponse handleAuthStep(String userId, String userInput) {
         AuthState state = authStates.get(userId);
 
@@ -76,6 +95,13 @@ public class AuthService {
         return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
     }
 
+    /**
+     * Проверяет аутентифицирован ли пользователь.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return true если пользователь аутентифицирован, false в противном случае
+     */
     public boolean isUserAuthenticated(String userId, String platformType) {
         try {
             return databaseService.getUsername(platformType, userId) != null;
@@ -85,6 +111,13 @@ public class AuthService {
         }
     }
 
+    /**
+     * Начинает процесс регистрации нового пользователя.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с запросом логина для регистрации
+     */
     public BotResponse handleRegistration(String userId, String platformType) {
         authStates.put(userId, new AuthState("registration", platformType));
         return new BotResponse("""
@@ -93,6 +126,13 @@ public class AuthService {
                 """);
     }
 
+    /**
+     * Начинает процесс входа в аккаунт.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с запросом логина для входа
+     */
     public BotResponse handleLogin(String userId, String platformType) {
         authStates.put(userId, new AuthState("integration", platformType));
         return new BotResponse("""
@@ -101,6 +141,13 @@ public class AuthService {
                 """);
     }
 
+    /**
+     * Обрабатывает выход пользователя из аккаунта.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с результатом операции выхода
+     */
     public BotResponse handleExit(String userId, String platformType) {
         try {
             if (isUserAuthenticated(userId, platformType)) {
@@ -121,14 +168,28 @@ public class AuthService {
         }
     }
 
+    /**
+     * Возвращает сообщение приветствия.
+     */
     public String getWelcomeMessage() {
         return WELCOME_MESSAGE;
     }
 
+    /**
+     * Возвращает стартовое сообщение.
+     */
     public String getStartMessage() {
         return START_MESSAGE;
     }
 
+    /**
+     * Обрабатывает шаг ввода логина при аутентификации.
+     *
+     * @param state состояние
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
         if (userInput.trim().isEmpty()) {
             return new BotResponse("""
@@ -164,6 +225,14 @@ public class AuthService {
         }
     }
 
+    /**
+     * Обрабатывает шаг ввода пароля при аутентификации.
+     *
+     * @param state состояние
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота
+     */
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
         if (password.isEmpty()) {
