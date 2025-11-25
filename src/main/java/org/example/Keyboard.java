@@ -28,14 +28,15 @@ public class Keyboard {
 
         KeyboardRow row1 = new KeyboardRow();
         row1.add("\u2795 Добавить задачу");
-        row1.add("\uD83D\uDCDD Показать список задач");
+        row1.add("\u2714 Выполнено");
+        row1.add("\u2718 Удалить");
+
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add("\u2714 Выполнено");
+        row2.add("\uD83D\uDCDD Показать список задач");
         row2.add("\u2705 Список выполненных задач");
 
         KeyboardRow row3 = new KeyboardRow();
-        row3.add("\u2718 Удалить");
         row3.add("Экспорт");
         row3.add("Импорт");
 
