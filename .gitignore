@@ -12,6 +12,13 @@ target/
 *.iml
 *.ipr
 
+### Database ###
+*.db
+*.h2.db
+*.mv.db
+*.sqlite
+*.sqlite3
+
 ### Eclipse ###
 .apt_generated
 .classpath
