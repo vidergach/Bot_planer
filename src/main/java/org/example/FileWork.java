@@ -1,7 +1,9 @@
 package org.example;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +31,6 @@ public class FileWork {
         }
         File file = new File(filename);
         try {
-            // Сериализация
             FileData exportData = new FileData(
                     tasks != null ? tasks : new ArrayList<>(),
                     completedTasks != null ? completedTasks : new ArrayList<>()

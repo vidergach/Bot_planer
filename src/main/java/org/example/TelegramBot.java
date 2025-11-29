@@ -10,11 +10,12 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.InputStream;
 
 /**
- * Telegram бот для управления задачами.
+ * Telegram бот для управления задачами с кнопками
  */
 public class TelegramBot extends TelegramLongPollingBot {
     private final MessageHandler logic;
     private final String botUsername;
+    private final Keyboard keyboard;
 
     /**
      * Создаем новый экземпляр Telegram бота.
@@ -22,11 +23,13 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param botUsername имя бота в Telegram
      * @param botToken токен для доступа к API Telegram Bot
      * @param logic обработчик логики команд и сообщений
+     *
      */
     public TelegramBot(String botUsername, String botToken, MessageHandler logic) {
         super(botToken);
         this.botUsername = botUsername;
         this.logic = logic;
+        this.keyboard = new Keyboard();
     }
 
     @Override
@@ -38,13 +41,22 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         try {
             if (update.getMessage().hasDocument()) {
-                handleImport(chatId, userId, update);
+                handleImportCommand(chatId, userId, update);
                 return;
             }
 
             if (update.getMessage().hasText()) {
                 String text = update.getMessage().getText();
-                BotResponse response = logic.processUserInput(text, userId);
+
+                String command = convertButton(text);
+                String PLATFORM_TYPE = "telegram";
+                BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
+
+                SendMessage message = new SendMessage();
+                message.setChatId(chatId);
+                message.setText(response.getMessage());
+
+                message.setReplyMarkup(keyboard.authorizationKeyboard());
 
                 if (response.hasFile()) {
                     SendDocument document = new SendDocument();
@@ -52,19 +64,39 @@ public class TelegramBot extends TelegramLongPollingBot {
                     document.setDocument(new InputFile(response.getFile(), response.getFileName()));
                     document.setCaption(response.getMessage());
                     execute(document);
-                } else {
-                    execute(new SendMessage(chatId, response.getMessage()));
+                } else{
+                    execute(message);
                 }
             }
 
         } catch (Exception e) {
             try {
-                e.printStackTrace();
-                execute(new SendMessage(chatId, "Ошибка: " + e.getMessage()));
+                SendMessage error = new SendMessage();
+                error.setChatId(chatId);
+                error.setText("Ошибка: " + e.getMessage());
+                error.setReplyMarkup(keyboard.authorizationKeyboard());
+                execute(error);
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();
             }
         }
+    }
+
+    private String convertButton(String button) {
+        return switch (button) {
+            case "\u2795 Добавить задачу" -> "/add";
+            case "\uD83D\uDCDD Показать список задач" -> "/tasks";
+            case "\u2705 Список выполненных задач" -> "/dTask";
+            case "\u2718 Удалить" -> "/delete";
+            case "\u2714 Выполнено" -> "/done";
+            case "Экспорт" -> "/export";
+            case "Импорт" -> "/import";
+            case "Помощь" -> "/help";
+            case "\uD83D\uDCDD Регистрация" -> "/registration";
+            case "Войти в аккаунт" -> "/login";
+            case "Выйти из аккаунта" -> "/exit";
+            default -> button;
+        };
     }
 
     /**
@@ -74,7 +106,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param userId идентификатор пользователя для задач
      * @param update объект обновления с информацией о файле
      */
-    private void handleImport(String chatId, String userId, Update update) {
+    private void handleImportCommand(String chatId, String userId, Update update) {
         try {
             String fileId = update.getMessage().getDocument().getFileId();
             GetFile getFile = new GetFile(fileId);
@@ -88,7 +120,6 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         } catch (Exception e) {
             try {
-                e.printStackTrace();
                 execute(new SendMessage(chatId, "Ошибка импорта: " + e.getMessage()));
             } catch (TelegramApiException ex) {
                 ex.printStackTrace();
