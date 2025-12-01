@@ -13,6 +13,7 @@ public class SubtaskService {
     private final DatabaseService databaseService;
     private final Map<String, SubtaskState> expandStates = new ConcurrentHashMap<>();
     private final OpenRouterClient gptClient;
+    private final Keyboard keyboard;
 
     private final String SUBTASK_MESSAGE = """
             Отлично! Выберите действие, которое хотите сделать:
@@ -31,21 +32,24 @@ public class SubtaskService {
         String taskText;
         String step;
         String selectSubtask;
-        List<String> generatedSubtasks; // Для хранения сгенерированных GPT подзадач
+        List<String> generatedSubtasks;// Для хранения сгенерированных GPT подзадач
+        boolean showGptKeyboard;
 
         SubtaskState(Integer taskId, String taskText) {
             this.taskId = taskId;
             this.taskText = taskText;
             this.step = null;
             this.generatedSubtasks = new ArrayList<>();
+            this.showGptKeyboard = false;
         }
     }
 
     /**
      * Конструктор сервиса подзадач.
      */
-    public SubtaskService(DatabaseService databaseService) {
+    public SubtaskService(DatabaseService databaseService, Keyboard keyboard) {
         this.databaseService = databaseService;
+        this.keyboard = keyboard;
         // Получаем API ключ из переменных окружения
         String apiKey = System.getenv("OPENROUTER_API_KEY");
         this.gptClient = new OpenRouterClient(apiKey != null ? apiKey : "");
@@ -73,6 +77,21 @@ public class SubtaskService {
     }
 
     /**
+     * Проверяет, нужно ли показывать клавиатуру GPT для пользователя
+     */
+    public boolean shouldGptKeyboard(String userId) {
+        SubtaskState state = expandStates.get(userId);
+        return state != null && state.showGptKeyboard;
+    }
+
+    /**
+     * Возвращает клавиатуру GPT
+     */
+    public Object getGptKeyboard() {
+        return keyboard.gptKeyboard();
+    }
+
+    /**
      * Обрабатывает ввод данных в режиме расширения задачи
      */
     public BotResponse handleSubtaskInput(String userId, String userInput, Object stateObj) {
@@ -88,7 +107,7 @@ public class SubtaskService {
                 case "add_subtask" -> handleAddSubtask(userId, userInput, state.taskId);
                 case "delete_subtask" -> handleDeleteSubtask(userId, userInput, state.taskId);
                 case "edit_subtask" -> handleEditSubtask(userInput, state);
-                case "gpt_details" -> handleGptDetails(userId, userInput, state);
+                case "gpt_details" -> handleGptDetails(userInput, state);
                 default -> {
                     expandStates.remove(userId);
                     yield new BotResponse("Ошибка режима расширения");
@@ -107,6 +126,22 @@ public class SubtaskService {
         SubtaskState state = expandStates.get(userId);
         if (state == null) {
             return new BotResponse("Сначала выберите задачу для расширения.");
+        }
+
+        if (!state.generatedSubtasks.isEmpty() && state.showGptKeyboard) {
+            return switch (command) {
+                case "/save_subtasks_from_gpt", "Сохранить" -> handleSaveGptSubtasks(state);
+                case "/delete_subtasks_from_gpt", "Удалить" -> handleDeleteGptSubtasks(state);
+                default -> {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Подзадачи, написанные чатом GPT:\n\n");
+                    for (int i = 0; i < state.generatedSubtasks.size(); i++) {
+                        sb.append(i + 1).append(". ").append(state.generatedSubtasks.get(i)).append("\n");
+                    }
+                    sb.append ("Пожалуйста, используйте кнопки [Сохранить] или [Удалить] для продолжения.");
+                    yield new BotResponse(sb.toString());
+                }
+            };
         }
 
         if (state.step != null) {
@@ -135,8 +170,7 @@ public class SubtaskService {
                 yield new BotResponse("Отлично! Напишите подзадачу для изменения:");
             }
             case "/finish_expand", "Окончить расширение" -> handleFinishExpand(userId);
-            case "/save_subtasks_from_gpt", "Сохранить" -> handleSaveGptSubtasks(userId, state);
-            case "/delete_subtasks_from_gpt", "Удалить" -> handleDeleteGptSubtasks(userId, state);
+            case "/save_subtasks_from_gpt", "Сохранить", "/delete_subtasks_from_gpt", "Удалить" -> new BotResponse("Сначала сгенерируйте подзадачи с помощью GPT");
             default -> new BotResponse("Используйте кнопки для работы с подзадачами или введите /finish_expand для выхода.");
         };
     }
@@ -144,7 +178,7 @@ public class SubtaskService {
     /**
      * Обрабатывает детали для GPT
      */
-    private BotResponse handleGptDetails(String userId, String userInput, SubtaskState state) {
+    private BotResponse handleGptDetails(String userInput, SubtaskState state) {
         if (userInput.trim().isEmpty()) {
             return new BotResponse("Пожалуйста, напишите детали и пожелания по задаче:");
         }
@@ -162,11 +196,12 @@ public class SubtaskService {
             // Парсим ответ на отдельные подзадачи
             List<String> subtasks = parseGptResponse(gptResponse);
             state.generatedSubtasks = subtasks;
-            state.step = "gpt_review";
+            state.step = null;
+            state.showGptKeyboard = true;
 
             // Формируем сообщение с предложением сохранить или удалить
             StringBuilder sb = new StringBuilder();
-            sb.append("🤖 Подзадачи, сгенерированные ИИ:\n\n");
+            sb.append("Подзадачи, написанные чатом GPT:\n\n");
             for (int i = 0; i < subtasks.size(); i++) {
                 sb.append(i + 1).append(". ").append(subtasks.get(i)).append("\n");
             }
@@ -177,7 +212,8 @@ public class SubtaskService {
         } catch (Exception e) {
             e.printStackTrace();
             state.step = null;
-            return new BotResponse("❌ Ошибка при генерации подзадач: " + e.getMessage());
+            state.showGptKeyboard = false;
+            return new BotResponse("Ошибка при генерации подзадач: " + e.getMessage());
         }
     }
 
@@ -206,30 +242,31 @@ public class SubtaskService {
     /**
      * Сохраняет подзадачи, сгенерированные GPT
      */
-    private BotResponse handleSaveGptSubtasks(String userId, SubtaskState state) {
+    private BotResponse handleSaveGptSubtasks(SubtaskState state) {
         try {
             for (String subtask : state.generatedSubtasks) {
                 databaseService.addSubtask(state.taskId, subtask);
             }
 
             state.generatedSubtasks.clear();
-            state.step = null;
+            state.showGptKeyboard = false;
 
             return new BotResponse("✅ Подзадачи сохранены! Можете посмотреть общий список задач.");
 
         } catch (SQLException e) {
             e.printStackTrace();
             state.step = null;
-            return new BotResponse("❌ Ошибка при сохранении подзадач: " + e.getMessage());
+            state.showGptKeyboard = false;
+            return new BotResponse("Ошибка при сохранении подзадач: " + e.getMessage());
         }
     }
 
     /**
      * Удаляет сгенерированные GPT подзадачи
      */
-    private BotResponse handleDeleteGptSubtasks(String userId, SubtaskState state) {
+    private BotResponse handleDeleteGptSubtasks(SubtaskState state) {
         state.generatedSubtasks.clear();
-        state.step = null;
+        state.showGptKeyboard = false;
         return new BotResponse("🗑️ Подзадачи удалены. При повторном процессе сделайте запрос более точным, чтобы получить желаемые подзадачи.");
     }
 
@@ -353,4 +390,5 @@ public class SubtaskService {
             return new BotResponse("Ошибка при работе с подзадачами: " + e.getMessage());
         }
     }
+
 }
