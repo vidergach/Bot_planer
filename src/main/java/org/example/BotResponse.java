@@ -3,8 +3,7 @@ package org.example;
 import java.io.File;
 
 /**
- * Структура для возврата ответа бота
- * Содержит текстовое сообщение для отправки пользователю.
+ * Класс, представляющий ответ бота на запрос.
  */
 public class BotResponse {
     private final String message;
@@ -12,7 +11,7 @@ public class BotResponse {
     private final String fileName;
 
     /**
-     * Создает текстовый ответ
+     * Конструктор для создания текстового ответа.
      *
      * @param message текстовое сообщение
      */
@@ -23,7 +22,7 @@ public class BotResponse {
     }
 
     /**
-     * Создает ответ с файлом
+     * Конструктор для создания ответа с файлом.
      *
      * @param message текстовое сообщение
      * @param file файл
@@ -35,9 +34,39 @@ public class BotResponse {
         this.fileName = fileName;
     }
 
-    public String getMessage() { return message; }
-    public File getFile() { return file; }
-    public String getFileName() { return fileName; }
-    public boolean hasFile() { return file != null; }
-}
+    /**
+     * Возвращает текстовое сообщение ответа.
+     *
+     * @return текстовое сообщение
+     */
+    public String getMessage() {
+        return message;
+    }
 
+    /**
+     * Возвращает файл ответа.
+     *
+     * @return файл для отправки
+     */
+    public File getFile() {
+        return file;
+    }
+
+    /**
+     * Возвращает имя файла.
+     *
+     * @return имя файла
+     */
+    public String getFileName() {
+        return fileName;
+    }
+
+    /**
+     * Проверяет, содержит ли ответ файл.
+     *
+     * @return true если ответ содержит файл, false в противном случае
+     */
+    public boolean hasFile() {
+        return file != null;
+    }
+}
