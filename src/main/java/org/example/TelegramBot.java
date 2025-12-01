@@ -108,6 +108,9 @@ public class TelegramBot extends TelegramLongPollingBot {
             case "\u2718 Удалить подзадачу" -> "/delete_subtask";
             case "Изменить подзадачу" -> "/edit_subtask";
             case "Окончить расширение" -> "/finish_expand";
+            case "GPT добавление подзадач" -> "/add_subtasks_with_gpt";
+            case "Сохранить" -> "/save_subtasks_from_gpt";
+            case "Удалить" -> "/delete_subtasks_from_gpt";
             default -> button;
         };
     }
