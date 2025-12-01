@@ -502,6 +502,7 @@ public class MessageHandlerTests {
         BotResponse response = messageHandler.processUserInput("Первая подзадача", userId, PLATFORM_TYPE);
 
         Assertions.assertEquals("Подзадача удалена.", response.getMessage());
+        messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
 
         BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""

@@ -12,8 +12,6 @@ public class Keyboard {
 
     /**
      * Создает и возвращает клавиатуру авторизации с основными командами бота.
-     *
-     * @return объект с кнопками команд
      */
     public ReplyKeyboardMarkup authorizationKeyboard() {
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
@@ -27,7 +25,6 @@ public class Keyboard {
         row0.add("Войти в аккаунт");
 
         KeyboardRow row1 = new KeyboardRow();
-
         row1.add("\uD83D\uDCDD Показать список задач");
         row1.add("\u2705 Список выполненных задач");
         row1.add("Расширить задачу");
@@ -58,7 +55,9 @@ public class Keyboard {
         return keyboard;
     }
 
-
+    /**
+     * Создает клавиатуру для работы с подзадачами
+     */
     public ReplyKeyboardMarkup subtaskKeyboard() {
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
@@ -69,9 +68,12 @@ public class Keyboard {
         KeyboardRow row0 = new KeyboardRow();
         row0.add("\u2795 Добавить подзадачу");
         row0.add("\u2718 Удалить подзадачу");
+        row0.add("GPT добавление подзадач");
 
         KeyboardRow row1 = new KeyboardRow();
         row1.add("Изменить подзадачу");
+        row1.add("Сохранить");
+        row1.add("Удалить");
 
         KeyboardRow row2 = new KeyboardRow();
         row2.add("Окончить расширение");
