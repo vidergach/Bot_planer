@@ -436,10 +436,11 @@ public class MessageHandlerTests {
         BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
         Отлично! Выберите действие, которое хотите сделать:
-        /add_subtask - добавить подзадачу
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
         /delete_subtask - удалить подзадачу
         /edit_subtask - изменить подзадачу
-        /finish_expand - окончить расширение задачи    
+        /finish_expand - окончить расширение задачи 
         """, expandResponse.getMessage());
 
         BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
@@ -486,10 +487,11 @@ public class MessageHandlerTests {
         BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
         Отлично! Выберите действие, которое хотите сделать:
-        /add_subtask - добавить подзадачу
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
         /delete_subtask - удалить подзадачу
         /edit_subtask - изменить подзадачу
-        /finish_expand - окончить расширение задачи    
+        /finish_expand - окончить расширение задачи
         """, expandResponse.getMessage());
 
         BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
@@ -538,10 +540,11 @@ public class MessageHandlerTests {
         BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
         Отлично! Выберите действие, которое хотите сделать:
-        /add_subtask - добавить подзадачу
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
         /delete_subtask - удалить подзадачу
         /edit_subtask - изменить подзадачу
-        /finish_expand - окончить расширение задачи    
+        /finish_expand - окончить расширение задачи
         """, expandResponse.getMessage());
 
         BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
@@ -592,10 +595,11 @@ public class MessageHandlerTests {
         BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
         Assertions.assertEquals("""
         Отлично! Выберите действие, которое хотите сделать:
-        /add_subtask - добавить подзадачу
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
         /delete_subtask - удалить подзадачу
         /edit_subtask - изменить подзадачу
-        /finish_expand - окончить расширение задачи    
+        /finish_expand - окончить расширение задачи
         """, expandResponse.getMessage());
 
         BotResponse addSubtaskResponse = messageHandler.processUserInput("/add_subtask", userId, PLATFORM_TYPE);
@@ -624,6 +628,118 @@ public class MessageHandlerTests {
          1.1 Первая подзадача
         2. Полить цветы
         """, tasksResponse.getMessage());
+    }
+
+    /**
+     * Тестирует процесс сохранения подзадач GPT
+     */
+    @Test
+    void testGptSubtaskSave() {
+        String userId = "gpt_save_user";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Рисование картины", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Рисование картины\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Рисование картины
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи
+        """, expandResponse.getMessage());
+
+        BotResponse gptCommandResponse = messageHandler.processUserInput("/add_subtasks_with_gpt", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+            Напишите детали и пожелания по задаче, для более точного добавления новых подзадач.
+            Например: "Рисунок красками и кисточками, хочу рисовать природу"
+            """, gptCommandResponse.getMessage());
+
+        BotResponse gptDetailsResponse = messageHandler.processUserInput("Рисунок красками, хочу рисовать природу", userId, PLATFORM_TYPE);
+
+        BotResponse finishResponse = messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Добавление подзадач завершено! Вы можете посмотреть список задач.", finishResponse.getMessage());
+
+        BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Рисование картины
+        """, tasksResponse.getMessage());
+
+        BotResponse newTaskResponse = messageHandler.processUserInput("/add Новая задача", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Новая задача\" добавлена!", newTaskResponse.getMessage());
+
+        BotResponse finalTasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Рисование картины
+        2. Новая задача
+        """, finalTasksResponse.getMessage());
+    }
+
+    /**
+     * Тестирует процесс удаления подзадач GPT
+     */
+    @Test
+    void testGptSubtaskDelete() {
+        String userId = "gpt_delete_user";
+        registerTestUser(userId);
+
+        BotResponse addTaskResponse = messageHandler.processUserInput("/add Планирование путешествия", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Планирование путешествия\" добавлена!", addTaskResponse.getMessage());
+
+        BotResponse expandCommandResponse = messageHandler.processUserInput("/expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Выберите задачу, которую хотите расширить:
+        1. Планирование путешествия
+        
+        Введите номер задачи:""", expandCommandResponse.getMessage());
+
+        BotResponse expandResponse = messageHandler.processUserInput("1", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        Отлично! Выберите действие, которое хотите сделать:
+        /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
+        /add_subtask - добавить подзадачу 
+        /delete_subtask - удалить подзадачу
+        /edit_subtask - изменить подзадачу
+        /finish_expand - окончить расширение задачи
+        """, expandResponse.getMessage());
+
+        BotResponse gptCommandResponse = messageHandler.processUserInput("/add_subtasks_with_gpt", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+            Напишите детали и пожелания по задаче, для более точного добавления новых подзадач.
+            Например: "Рисунок красками и кисточками, хочу рисовать природу"
+            """, gptCommandResponse.getMessage());
+
+        BotResponse gptDetailsResponse = messageHandler.processUserInput("Путешествие в Париж на неделю", userId, PLATFORM_TYPE);
+
+        BotResponse finishResponse = messageHandler.processUserInput("/finish_expand", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Добавление подзадач завершено! Вы можете посмотреть список задач.", finishResponse.getMessage());
+
+        BotResponse tasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Планирование путешествия
+        """, tasksResponse.getMessage());
+
+        BotResponse newTaskResponse = messageHandler.processUserInput("/add Отдых после путешествия", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("Задача \"Отдых после путешествия\" добавлена!", newTaskResponse.getMessage());
+
+        BotResponse finalTasksResponse = messageHandler.processUserInput("/tasks", userId, PLATFORM_TYPE);
+        Assertions.assertEquals("""
+        📝 Ваши задачи:
+        1. Планирование путешествия
+        2. Отдых после путешествия
+        """, finalTasksResponse.getMessage());
     }
 }
 

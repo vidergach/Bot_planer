@@ -12,6 +12,7 @@ public class MessageHandler {
     private final AuthService authService;
     private final OperationService operationService;
     private final SubtaskService subtaskService;
+    private final Keyboard keyboard;
     private final FileWork fileWork = new FileWork();
 
     private final String START_MESSAGE = """
@@ -32,6 +33,7 @@ public class MessageHandler {
             /help - помощь
             
             Команды для подзадач:
+            /add_subtasks_with_gpt - добавить подзадачи с помощью чата GPT
             /add_subtask - добавить подзадачу
             /delete_subtask - удалить подзадачу
             /edit_subtask - изменить подзадачу
@@ -65,7 +67,8 @@ public class MessageHandler {
         this.databaseService = new DatabaseService();
         this.authService = new AuthService(databaseService);
         this.operationService = new OperationService(databaseService);
-        this.subtaskService = new SubtaskService(databaseService);
+        this.keyboard = new Keyboard();
+        this.subtaskService = new SubtaskService(databaseService, keyboard);
     }
 
     /**
@@ -75,7 +78,8 @@ public class MessageHandler {
         this.databaseService = databaseService;
         this.authService = new AuthService(databaseService);
         this.operationService = new OperationService(databaseService);
-        this.subtaskService = new SubtaskService(databaseService);
+        this.keyboard = new Keyboard();
+        this.subtaskService = new SubtaskService(databaseService, keyboard);
     }
 
     /**
@@ -281,4 +285,19 @@ public class MessageHandler {
     public boolean isUserInSubtaskMode(String userId) {
         return subtaskService.isUserInSubtaskMode(userId);
     }
+
+    /**
+     * Проверяет, нужно ли показывать клавиатуру GPT для пользователя
+     */
+    public boolean shouldShowGptKeyboard(String userId) {
+        return subtaskService.shouldGptKeyboard(userId);
+    }
+
+    /**
+     * Возвращает клавиатуру GPT
+     */
+    public Object getGptKeyboard() {
+        return subtaskService.getGptKeyboard();
+    }
+
 }

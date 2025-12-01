@@ -16,12 +16,15 @@ public class OpenRouterClient {
     private final String apiKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Создает новый экземпляр клиента OpenRouter.
+     */
     public OpenRouterClient(String apiKey) {
         this.apiKey = apiKey;
     }
 
     /**
-     * отправка запроса через OpenRouter.
+     * Отправка запроса через OpenRouter.
      */
     public String sendRequest(String userPrompt) throws IOException, InterruptedException {
         String requestBody = createRequestBody(userPrompt);
@@ -33,10 +36,13 @@ public class OpenRouterClient {
         return processResponse(response);
     }
 
+    /**
+     * Создает тело запроса в формате JSON для отправки в OpenRouter API.
+     */
     private String createRequestBody(String userPrompt) {
         return String.format("""
                     {
-                      "model": "gpt-3.5-turbo",
+                      "model": "openai/gpt-oss-20b:free",
                       "messages": [
                         {"role": "system", "content": "You are a helpful assistant that breaks down tasks into subtasks. Respond with a clear list of subtasks, one per line, without numbering or bullet points."},
                         {"role": "user", "content": "%s"}
@@ -45,6 +51,9 @@ public class OpenRouterClient {
                 """, userPrompt.replace("\"", "\\\""));
     }
 
+    /**
+     * Создает HTTP запрос для отправки в OpenRouter API.
+     */
     private HttpRequest createHttpRequest(String requestBody) {
         return HttpRequest.newBuilder()
                 .uri(URI.create("https://openrouter.ai/api/v1/chat/completions"))
@@ -56,6 +65,9 @@ public class OpenRouterClient {
                 .build();
     }
 
+    /**
+     * Обрабатывает ответ от OpenRouter API.
+     */
     private String processResponse(HttpResponse<String> response) throws IOException {
         System.out.println("Status code: " + response.statusCode());
 

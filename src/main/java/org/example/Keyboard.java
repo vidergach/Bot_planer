@@ -68,12 +68,11 @@ public class Keyboard {
         KeyboardRow row0 = new KeyboardRow();
         row0.add("\u2795 Добавить подзадачу");
         row0.add("\u2718 Удалить подзадачу");
-        row0.add("GPT добавление подзадач");
+        row0.add("Изменить подзадачу");
 
         KeyboardRow row1 = new KeyboardRow();
         row1.add("Изменить подзадачу");
-        row1.add("Сохранить");
-        row1.add("Удалить");
+        row1.add("GPT добавление подзадач");
 
         KeyboardRow row2 = new KeyboardRow();
         row2.add("Окончить расширение");
@@ -82,6 +81,25 @@ public class Keyboard {
         rows.add(row1);
         rows.add(row2);
 
+        keyboard.setKeyboard(rows);
+        return keyboard;
+    }
+
+    /**
+     * Создает клавиатуру для сохранения или удаления подзадач из gpt
+     */
+    public ReplyKeyboardMarkup gptKeyboard() {
+        ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
+        keyboard.setResizeKeyboard(true);
+        keyboard.setOneTimeKeyboard(false);
+
+        List<KeyboardRow> rows = new ArrayList<>();
+
+        KeyboardRow row0 = new KeyboardRow();
+        row0.add("Сохранить");
+        row0.add("Удалить");
+
+        rows.add(row0);
         keyboard.setKeyboard(rows);
         return keyboard;
     }

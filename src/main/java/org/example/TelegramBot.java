@@ -55,7 +55,14 @@ public class TelegramBot extends TelegramLongPollingBot {
                 message.setChatId(chatId);
                 message.setText(response.getMessage());
 
-                if (logic.isUserInSubtaskMode(userId)) {
+                if (logic.shouldShowGptKeyboard(userId)) {
+                    // Если нужно показать клавиатуру GPT
+                    Object gptKeyboard = logic.getGptKeyboard();
+                    if (gptKeyboard instanceof org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup) {
+                        message.setReplyMarkup((org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup) gptKeyboard);
+                    }
+                }
+                else if (logic.isUserInSubtaskMode(userId)) {
                     message.setReplyMarkup(keyboard.subtaskKeyboard());
                 } else {
                     message.setReplyMarkup(keyboard.authorizationKeyboard());
