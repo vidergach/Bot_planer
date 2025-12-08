@@ -48,7 +48,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (update.getMessage().hasText()) {
                 String text = update.getMessage().getText();
 
-                String command = convertButton(text);
+                String command = text;
                 String PLATFORM_TYPE = "telegram";
                 BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
 
@@ -80,23 +80,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 ex.printStackTrace();
             }
         }
-    }
-
-    private String convertButton(String button) {
-        return switch (button) {
-            case "\u2795 Добавить задачу" -> "/add";
-            case "\uD83D\uDCDD Показать список задач" -> "/tasks";
-            case "\u2705 Список выполненных задач" -> "/dTask";
-            case "\u2718 Удалить" -> "/delete";
-            case "\u2714 Выполнено" -> "/done";
-            case "Экспорт" -> "/export";
-            case "Импорт" -> "/import";
-            case "Помощь" -> "/help";
-            case "\uD83D\uDCDD Регистрация" -> "/registration";
-            case "Войти в аккаунт" -> "/login";
-            case "Выйти из аккаунта" -> "/exit";
-            default -> button;
-        };
     }
 
     /**
