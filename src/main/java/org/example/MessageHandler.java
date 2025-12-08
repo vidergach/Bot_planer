@@ -35,12 +35,7 @@ public class MessageHandler {
     }
 
     /**
-     * Основной метод обработки ввода.
-     *
-     * @param userInput ввод
-     * @param userId идентификатор пользователя
-     * @param platformType тип платформы
-     * @return ответ бота
+     * Основной метод обработки ввода
      */
     public BotResponse processUserInput(String userInput, String userId, String platformType) {
         System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
@@ -53,9 +48,14 @@ public class MessageHandler {
                 return authService.handleAuthStep(userId, userInput);
             }
 
-            String[] parts = userInput.trim().split("\\s+", 2);
-            String command = parts[0];
-            String parameter = parts.length > 1 ? parts[1].trim() : "";
+            String command = mapButtonToCommand(userInput);
+            String parameter = "";
+
+            if (command == null) {
+                String[] parts = userInput.trim().split("\\s+", 2);
+                command = parts[0];
+                parameter = parts.length > 1 ? parts[1].trim() : "";
+            }
 
             if (!authService.isUserAuthenticated(userId, platformType)) {
                 if (command.equals("/registration") || command.equals("/login")) {
@@ -75,6 +75,27 @@ public class MessageHandler {
             return new BotResponse("Произошла ошибка: " + e.getMessage());
         }
     }
+
+    /**
+     * Преобразует текст кнопки в команду
+     */
+    private String mapButtonToCommand(String buttonText) {
+        return switch (buttonText) {
+            case "📝 Регистрация" -> "/registration";
+            case "Войти в аккаунт" -> "/login";
+            case "➕ Добавить задачу" -> "/add";
+            case "📝 Показать список задач" -> "/tasks";
+            case "✔ Выполнено" -> "/done";
+            case "✅ Список выполненных задач" -> "/dTask";
+            case "❌ Удалить" -> "/delete";
+            case "Экспорт" -> "/export";
+            case "Импорт" -> "/import";
+            case "Выйти из аккаунта" -> "/exit";
+            case "Помощь" -> "/help";
+            default -> null;
+        };
+    }
+
 
     /**
      * Обрабатывает импорт задач из файла.

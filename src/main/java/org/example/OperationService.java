@@ -201,6 +201,10 @@ public class OperationService {
             }
             return switch (operation) {
                 case "add" -> {
+                    if (input == null || input.trim().isEmpty()) {
+                        operationStates.put(userId, new Operation("add"));
+                        yield new BotResponse("Введите задачу для добавления:\nНапример: Купить молоко");
+                    }
                     databaseService.addTask(internalUserId, input);
                     yield new BotResponse("Задача \"" + input + "\" добавлена!");
                 }
