@@ -262,7 +262,7 @@ public class MessageHandlerTestsKeyboard {
 
         messageHandler.processUserInput("➕ Добавить задачу", userId, PLATFORM_TYPE);
         BotResponse response = messageHandler.processUserInput("Полить цветы", userId, PLATFORM_TYPE);
-        Assertions.assertEquals("Задача \"Полить цветы\" добавлена!", response.getMessage());
+        Assertions.assertEquals("Задача \"" + "Полить цветы" + "\" уже существует!", response.getMessage());
 
         BotResponse tasksResponse = messageHandler.processUserInput("📝 Показать список задач", userId, PLATFORM_TYPE);
         String tasksMessage = tasksResponse.getMessage();

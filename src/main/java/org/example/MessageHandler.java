@@ -72,7 +72,7 @@ public class MessageHandler {
             return operationService.processCommand(command, parameter, userId, platformType);
         } catch (Exception e) {
             e.printStackTrace();
-            return new BotResponse("Произошла ошибка: " + e.getMessage());
+            return new BotResponse(e.getMessage());
         }
     }
 
