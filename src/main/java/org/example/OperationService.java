@@ -1,13 +1,14 @@
 package org.example;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Сервис для управления операциями с задачами.
+ * Сервис для управления операциями с задачами
  */
 public class OperationService {
     private final DatabaseService databaseService;
@@ -110,7 +111,7 @@ public class OperationService {
      * @param userInput ввод пользователя
      * @return ответ бота с результатом выполнения операции
      */
-    public BotResponse handleOperationStep(String userId, String userInput) {
+    public BotResponse handleOperationStep(String userId, String userInput) throws SQLException, IOException, UserAuthorized, UnknownOperation, TaskNotFoundException, TaskAlreadyExistsException {
         Operation state = operationStates.get(userId);
         operationStates.remove(userId);
         return executeOperation(state.type, userInput.trim(), userId);
@@ -128,9 +129,11 @@ public class OperationService {
     BotResponse processCommand(String command, String parameter, String userId, String platformType) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
-            if (internalUserId == null) {
-                return new BotResponse("Ошибка: пользователь не авторизован. Пожалуйста, войдите снова.");
+            if (internalUserId == null && !command.equals("/start") && !command.equals("/help") &&
+                    !command.equals("/registration") && !command.equals("/login")) {
+                throw new UserAuthorized("Ошибка: пользователь не авторизован. Пожалуйста, войдите с помощью /login.");
             }
+
             return switch (command) {
                 case "/start" -> new BotResponse(authService.getStartMessage());
                 case "/help" -> new BotResponse(HELP_MESSAGE);
@@ -176,8 +179,8 @@ public class OperationService {
      * @param prompt сообщение
      * @return ответ бота
      */
-    private BotResponse handleOperation(String operation, String parameter, String userId, String prompt) {
-        if (parameter.isEmpty()) {
+    private BotResponse handleOperation(String operation, String parameter, String userId, String prompt) throws SQLException, IOException, UserAuthorized, UnknownOperation, TaskNotFoundException, TaskAlreadyExistsException {
+        if (parameter == null || parameter.isEmpty()) {
             operationStates.put(userId, new Operation(operation));
             return new BotResponse(prompt);
         } else {
@@ -193,97 +196,124 @@ public class OperationService {
      * @param userId идентификатор пользователя
      * @return ответ бота
      */
-    private BotResponse executeOperation(String operation, String input, String userId) {
-        try {
-            String internalUserId = databaseService.getUserIdByPlatform(userId);
-            if (internalUserId == null) {
-                return new BotResponse("Пользователь не авторизован");
-            }
-            return switch (operation) {
-                case "add" -> {
-                    if (input == null || input.trim().isEmpty()) {
-                        operationStates.put(userId, new Operation("add"));
-                        yield new BotResponse("Введите задачу для добавления:\nНапример: Купить молоко");
-                    }
-                    databaseService.addTask(internalUserId, input);
-                    yield new BotResponse("Задача \"" + input + "\" добавлена!");
-                }
-                case "delete" -> {
-                    databaseService.deleteTask(internalUserId, input);
-                    yield new BotResponse("🗑️ Задача \"" + input + "\" удалена!");
-                }
-                case "done" -> {
-                    databaseService.markTaskDone(internalUserId, input);
-                    yield new BotResponse("✅ Задача \"" + input + "\" выполнена!");
-                }
-                case "export" -> {
-                    DatabaseService.TaskData taskData = databaseService.exportTasks(internalUserId);
-                    File exportFile = fileWork.export(taskData.getCurrentTasks(), taskData.getCompletedTasks(), input);
-                    yield new BotResponse("Ваши задачи экспортированы в файл: " + exportFile.getName(), exportFile, exportFile.getName());
-                }
-                default -> new BotResponse("""
-                        Неизвестная команда.
-                        Введите /help для просмотра доступных команд.""");
-            };
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new BotResponse("Ошибка " + getOperationError(operation) + ": " + e.getMessage());
+    private BotResponse executeOperation(String operation, String input, String userId) throws SQLException, IOException, UserAuthorized, UnknownOperation, TaskNotFoundException, TaskAlreadyExistsException {
+        String internalUserId = databaseService.getUserIdByPlatform(userId);
+        if (internalUserId == null) {
+            throw new UserAuthorized("Пользователь не авторизован");
         }
+
+        return switch (operation) {
+            case "add" -> {
+                if (input == null || input.trim().isEmpty()) {
+                    operationStates.put(userId, new Operation("add"));
+                    yield new BotResponse("""
+                        Введите задачу для добавления:
+                        Например: Купить молоко""");
+                }
+                List<String> currentTasks = databaseService.getCurrentTasks(internalUserId);
+                if (currentTasks.contains(input.trim())) {
+                    throw new TaskAlreadyExistsException("Задача \"" + input + "\" уже существует!");
+                }
+                databaseService.addTask(internalUserId, input);
+                yield new BotResponse("Задача \"" + input + "\" добавлена!");
+            }
+            case "delete" -> {
+                List<String> currentTasks = databaseService.getCurrentTasks(internalUserId);
+                if (!currentTasks.contains(input.trim())) {
+                    throw new TaskNotFoundException("Задача \"" + input + "\" не найдена!");
+                }
+                databaseService.deleteTask(internalUserId, input);
+                yield new BotResponse("🗑️ Задача \"" + input + "\" удалена!");
+            }
+            case "done" -> {
+                List<String> currentTasks = databaseService.getCurrentTasks(internalUserId);
+                if (!currentTasks.contains(input.trim())) {
+                    throw new TaskNotFoundException("Задача \"" + input + "\" не найдена!");
+                }
+                databaseService.markTaskDone(internalUserId, input);
+                yield new BotResponse("✅ Задача \"" + input + "\" выполнена!");
+            }
+            case "export" -> {
+                DatabaseService.TaskData taskData = databaseService.exportTasks(internalUserId);
+                File exportFile = fileWork.export(taskData.getCurrentTasks(), taskData.getCompletedTasks(), input);
+                yield new BotResponse("Ваши задачи экспортированы в файл: " + exportFile.getName(),
+                        exportFile, exportFile.getName());
+            }
+            default -> throw new UnknownOperation("Неизвестная операция: " + operation);
+        };
     }
 
     /**
      * Обрабатывает отображение текущих задач.
      */
-    private BotResponse handleShowTasks(String internalUserId) {
-        try {
-            List<String> tasks = databaseService.getCurrentTasks(internalUserId);
-            if (tasks.isEmpty()) {
-                return new BotResponse("📝 Список задач пуст!");
-            }
-            StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
-            for (int i = 0; i < tasks.size(); i++) {
-                sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
-            }
-            return new BotResponse(sb.toString());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return new BotResponse("Ошибка при получении задач: " + e.getMessage());
+    private BotResponse handleShowTasks(String internalUserId) throws SQLException {
+        if (internalUserId == null) {
+            return new BotResponse("Ошибка: пользователь не авторизован");
         }
+
+        List<String> tasks = databaseService.getCurrentTasks(internalUserId);
+        if (tasks.isEmpty()) {
+            return new BotResponse("📝 Список задач пуст!");
+        }
+        StringBuilder sb = new StringBuilder("📝 Ваши задачи:\n");
+        for (int i = 0; i < tasks.size(); i++) {
+            sb.append(i + 1).append(". ").append(tasks.get(i)).append("\n");
+        }
+        return new BotResponse(sb.toString());
     }
 
     /**
      * Обрабатывает отображение выполненных задач.
      */
-    private BotResponse handleShowCompletedTasks(String internalUserId) {
-        try {
-            List<String> completedTasks = databaseService.getCompletedTasks(internalUserId);
-            if (completedTasks.isEmpty()) {
-                return new BotResponse("✅ Список выполненных задач пуст!");
-            }
-            StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
-            for (int i = 0; i < completedTasks.size(); i++) {
-                sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
-            }
-            return new BotResponse(sb.toString());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return new BotResponse("Ошибка при получении выполненных задач: " + e.getMessage());
+    private BotResponse handleShowCompletedTasks(String internalUserId) throws SQLException {
+        if (internalUserId == null) {
+            return new BotResponse("Ошибка: пользователь не авторизован");
+        }
+
+        List<String> completedTasks = databaseService.getCompletedTasks(internalUserId);
+        if (completedTasks.isEmpty()) {
+            return new BotResponse("✅ Список выполненных задач пуст!");
+        }
+        StringBuilder sb = new StringBuilder("✅ Выполненные задачи:\n");
+        for (int i = 0; i < completedTasks.size(); i++) {
+            sb.append(i + 1).append(". ").append(completedTasks.get(i)).append("\n");
+        }
+        return new BotResponse(sb.toString());
+    }
+
+    /**
+     * Исключение для случаев, когда задача не найдена
+     */
+    public static class TaskNotFoundException extends Exception {
+        public TaskNotFoundException(String message) {
+            super(message);
         }
     }
 
     /**
-     * Возвращает ошибки для операции.
-     *
-     * @param operation тип операции
-     * @return описание ошибки операции
+     * Исключение для случаев, когда задача уже существует
      */
-    private String getOperationError(String operation) {
-        return switch (operation) {
-            case "add" -> "добавления задачи";
-            case "delete" -> "удаления задачи";
-            case "done" -> "выполнения задачи";
-            case "export" -> "экспорта";
-            default -> "операции";
-        };
+    public static class TaskAlreadyExistsException extends Exception {
+        public TaskAlreadyExistsException(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Исключение для случаев, когда пользователь не авторизован
+     */
+    public class UserAuthorized extends Exception {
+        public UserAuthorized(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Исключение для случаев, когда пытаются вызвать неизвестную операцию
+     */
+    public class UnknownOperation extends Exception {
+        public UnknownOperation(String message) {
+            super(message);
+        }
     }
 }
