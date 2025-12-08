@@ -10,9 +10,6 @@ import java.sql.Statement;
 
 /**
  * Тесты для класса MessageHandler.
- * Проверяет функциональность обработки команд бота.
- *
- * @see MessageHandler
  */
 public class MessageHandlerTests {
     private MessageHandler messageHandler;
