@@ -71,21 +71,3 @@ public class BotResponse {
     }
 }
 
-    /**
-     * Возвращает имя файла.
-     *
-     * @return имя файла
-     */
-    public String getFileName() {
-        return fileName;
-    }
-
-    /**
-     * Проверяет, содержит ли ответ файл.
-     *
-     * @return true если ответ содержит файл, false в противном случае
-     */
-    public boolean hasFile() {
-        return file != null;
-    }
-}

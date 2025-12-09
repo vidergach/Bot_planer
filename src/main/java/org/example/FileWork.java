@@ -15,6 +15,7 @@ public class FileWork {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
+     * Экспортирует списки задач в JSON файл.
      * Создает файл с указанным именем, содержащий текущие и выполненные задачи.
      * Автоматически добавляет расширение .json если оно отсутствует.
      *

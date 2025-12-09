@@ -69,7 +69,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 }
             }
 
-
         } catch (Exception e) {
             try {
                 SendMessage error = new SendMessage();
@@ -81,35 +80,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 ex.printStackTrace();
             }
         }
-    }
-
-    /**
-     * Конвертирует текст кнопок в команды бота
-     */
-    private String convertButton(String button) {
-        return switch (button) {
-            case "\u2795 Добавить задачу" -> "/add";
-            case "\uD83D\uDCDD Показать список задач" -> "/tasks";
-            case "\u2705 Список выполненных задач" -> "/dTask";
-            case "\u2718 Удалить" -> "/delete";
-            case "\u2714 Выполнено" -> "/done";
-            case "Экспорт" -> "/export";
-            case "Импорт" -> "/import";
-            case "Помощь" -> "/help";
-            case "\uD83D\uDCDD Регистрация" -> "/registration";
-            case "Войти в аккаунт" -> "/login";
-            case "Выйти из аккаунта" -> "/exit";
-            case "Расширить задачу" -> "/expand";
-
-            case "\u2795 Добавить подзадачу" -> "/add_subtask";
-            case "\u2718 Удалить подзадачу" -> "/delete_subtask";
-            case "Изменить подзадачу" -> "/edit_subtask";
-            case "Окончить расширение" -> "/finish_expand";
-            case "GPT добавление подзадач" -> "/add_subtasks_with_gpt";
-            case "Сохранить" -> "/save_subtasks_from_gpt";
-            case "Удалить" -> "/delete_subtasks_from_gpt";
-            default -> button;
-        };
     }
 
     /**

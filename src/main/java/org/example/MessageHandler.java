@@ -104,8 +104,7 @@ public class MessageHandler {
      * @param userId идентификатор пользователя
      * @return ответ бота 
      */
-    public BotResponse processUserInput(String userInput, String userId, String platformType) {
-        System.out.println("сообщение: " + userInput + " от: " + userId + " платформа: " + platformType);
+    public BotResponse processImport(InputStream inputStream, String userId) {
         try {
             String internalUserId = databaseService.getUserIdByPlatform(userId);
             if (internalUserId == null) {
@@ -132,7 +131,7 @@ public class MessageHandler {
                     """);
         } catch (Exception e) {
             e.printStackTrace();
-            return new BotResponse("Произошла ошибка: " + e.getMessage());
+            return new BotResponse("Ошибка при импорте: " + e.getMessage());
         }
     }
 }
