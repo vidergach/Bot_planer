@@ -70,3 +70,4 @@ public class BotResponse {
         return file != null;
     }
 }
+

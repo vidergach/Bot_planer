@@ -40,7 +40,7 @@ public class DatabaseService {
         /**
          * Конструктор для создания объекта с данными задач.
          *
-         * @param currentTasks   список текущих задач
+         * @param currentTasks список текущих задач
          * @param completedTasks список выполненных задач
          */
         public TaskData(List<String> currentTasks, List<String> completedTasks) {
@@ -127,23 +127,11 @@ public class DatabaseService {
                     );
                     """;
 
-            String createSubtask = """
-                    CREATE TABLE IF NOT EXISTS subtasks (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        task_id INTEGER NOT NULL,
-                        subtask_text TEXT NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (task_id) REFERENCES user_tasks(id) ON DELETE CASCADE,
-                        UNIQUE(task_id, subtask_text)
-                    );
-                    """;
-
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute(createUsers);
                 stmt.execute(createCurrentTasks);
                 stmt.execute(createCompletedTasks);
                 stmt.execute(createUserSessions);
-                stmt.execute(createSubtask);
             }
             conn.commit();
         } catch (SQLException e) {
@@ -154,11 +142,11 @@ public class DatabaseService {
     /**
      * Добавляет новую задачу для указанного пользователя.
      *
-     * @param userId   идентификатор пользователя
+     * @param userId идентификатор пользователя
      * @param taskText текст задачи
      * @throws IllegalStateException если задача с таким текстом уже существует
      */
-    public void addTask(String userId, String taskText) {
+    public void addTask(String userId, String taskText)  {
         String sql = "INSERT INTO user_tasks (user_id, task_text) VALUES (?, ?)";
         try (Connection conn = DriverManager.getConnection(databaseUrl);
              PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
@@ -173,9 +161,9 @@ public class DatabaseService {
     /**
      * Отмечает задачу как выполненную.
      *
-     * @param userId   идентификатор пользователя
+     * @param userId идентификатор пользователя
      * @param taskText текст задачи
-     * @throws SQLException          если произошла ошибка при работе с базой данных
+     * @throws SQLException если произошла ошибка при работе с базой данных
      * @throws IllegalStateException если задача не найдена в списке текущих задач
      */
     public void markTaskDone(String userId, String taskText) throws SQLException {
@@ -209,7 +197,7 @@ public class DatabaseService {
     /**
      * Удаляет задачу из списка текущих задач пользователя.
      *
-     * @param userId   идентификатор пользователя
+     * @param userId идентификатор пользователя
      * @param taskText текст задачи
      * @throws SQLException если произошла ошибка при работе с базой данных
      */
@@ -248,7 +236,7 @@ public class DatabaseService {
     /**
      * Метод для получения задач из указанной таблицы.
      *
-     * @param userId    идентификатор пользователя
+     * @param userId идентификатор пользователя
      * @param tableName имя таблицы
      * @return список задач
      * @throws SQLException если произошла ошибка при работе
@@ -288,7 +276,6 @@ public class DatabaseService {
             if (e.getErrorCode() == 19) {
                 return false;
             }
-            e.printStackTrace();
             throw e;
         }
     }
@@ -296,10 +283,10 @@ public class DatabaseService {
     /**
      * Аутентифицирует пользователя и создает сессию для платформы.
      *
-     * @param username     имя пользователя
-     * @param password     пароль
+     * @param username имя пользователя
+     * @param password пароль
      * @param platformType тип платформы
-     * @param platformId   идентификатор
+     * @param platformId идентификатор
      * @return true если аутентификация прошла успешно, false в противном случае
      * @throws SQLException если произошла ошибка при работе
      */
@@ -337,7 +324,7 @@ public class DatabaseService {
      * Возвращает имя пользователя по идентификатору платформы.
      *
      * @param platformType тип платформы
-     * @param platformId   идентификатор
+     * @param platformId идентификатор
      * @return имя пользователя
      * @throws SQLException если произошла ошибка при работе
      */
@@ -398,7 +385,7 @@ public class DatabaseService {
      *
      * @param username имя пользователя для проверки
      * @return true если пользователь существует, false в противном случае
-     * @throws SQLException если произошла ошибка
+     * @throws SQLException если произошла ошибка при работе
      */
     public boolean userExists(String username) throws SQLException {
         String sql = "SELECT id FROM users WHERE username = ?";
@@ -412,95 +399,20 @@ public class DatabaseService {
 
     /**
      * Выход пользователя из системы.
+     *
+     * @param platformId идентификатор платформы
+     * @param platformType тип платформы
+     * @return true если выход выполнен успешно, false если пользователь не был авторизован
+     * @throws SQLException если произошла ошибка при работе с базой данных
      */
     public boolean logoutUser(String platformId, String platformType) throws SQLException {
         String sql = "DELETE FROM user_sessions WHERE platform_id = ? AND platform_type = ?";
         try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement= conn.prepareStatement(sql)) {
-            preparedStatement.setString(1, platformId);
-            preparedStatement.setString(2, platformType);
-            int affectedRows = preparedStatement.executeUpdate();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, platformId);
+            pstmt.setString(2, platformType);
+            int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         }
     }
-
-    /**
-     * Добавляет новую подзадачу к указанной задаче.
-     */
-    public void addSubtask(Integer taskId, String subtaskText) throws SQLException {
-        String sql = "INSERT INTO subtasks (task_id, subtask_text) VALUES (?, ?)";
-        try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            preparedStatement.setInt(1, taskId);
-            preparedStatement.setString(2, subtaskText.trim());
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            if (e.getErrorCode() != 19) {
-                e.printStackTrace();
-                throw e;
-            }
-        }
-    }
-
-    /**
-     * Удаляет подзадачу.
-     */
-    public void deleteSubtask(Integer taskId, String subtaskText) throws SQLException {
-        String sql = "DELETE FROM subtasks WHERE task_id = ? AND subtask_text = ?";
-        try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            preparedStatement.setInt(1, taskId);
-            preparedStatement.setString(2, subtaskText.trim());
-            preparedStatement.executeUpdate();
-        }
-    }
-
-    /**
-     * Изменяет текст подзадачи.
-     */
-    public void editSubtask(Integer taskId, String oldSubtaskText, String newSubtaskText) throws SQLException {
-        String sql = "UPDATE subtasks SET subtask_text = ? WHERE task_id = ? AND subtask_text = ?";
-        try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            preparedStatement.setString(1, newSubtaskText.trim());
-            preparedStatement.setInt(2, taskId);
-            preparedStatement.setString(3, oldSubtaskText.trim());
-            preparedStatement.executeUpdate();
-        }
-    }
-
-    /**
-     * Список подзадач для задачи.
-     */
-    public List<String> getSubtasks(Integer taskId) throws SQLException {
-        List<String> subtasks = new ArrayList<>();
-        String sql = "SELECT id, task_id, subtask_text FROM subtasks WHERE task_id = ? ORDER BY id";
-        try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            preparedStatement.setInt(1, taskId);
-            ResultSet rs = preparedStatement.executeQuery();
-            while (rs.next()) {
-                subtasks.add(rs.getString("subtask_text"));
-            }
-        }
-        return subtasks;
-    }
-
-    /**
-     * Возвращает идентификатор задачи.
-     */
-    public Integer getTaskId(String userId, String taskText) throws SQLException {
-        String sql = "SELECT id FROM user_tasks WHERE user_id = ? AND task_text = ?";
-        try (Connection conn = DriverManager.getConnection(databaseUrl);
-             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-            preparedStatement.setString(1, userId);
-            preparedStatement.setString(2, taskText.trim());
-            ResultSet rs = preparedStatement.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("id");
-            }
-            return null;
-        }
-    }
 }
-

@@ -23,6 +23,7 @@ public class TelegramBot extends TelegramLongPollingBot {
      * @param botUsername имя бота в Telegram
      * @param botToken токен для доступа к API Telegram Bot
      * @param logic обработчик логики команд и сообщений
+     *
      */
     public TelegramBot(String botUsername, String botToken, MessageHandler logic) {
         super(botToken);
@@ -47,19 +48,15 @@ public class TelegramBot extends TelegramLongPollingBot {
             if (update.getMessage().hasText()) {
                 String text = update.getMessage().getText();
 
-                String command = convertButton(text);
-
+                String command = text;
                 String PLATFORM_TYPE = "telegram";
                 BotResponse response = logic.processUserInput(command, userId, PLATFORM_TYPE);
+
                 SendMessage message = new SendMessage();
                 message.setChatId(chatId);
                 message.setText(response.getMessage());
 
-                if (logic.isUserInSubtaskMode(userId)) {
-                    message.setReplyMarkup(keyboard.subtaskKeyboard());
-                } else {
-                    message.setReplyMarkup(keyboard.authorizationKeyboard());
-                }
+                message.setReplyMarkup(keyboard.authorizationKeyboard());
 
                 if (response.hasFile()) {
                     SendDocument document = new SendDocument();
@@ -67,11 +64,10 @@ public class TelegramBot extends TelegramLongPollingBot {
                     document.setDocument(new InputFile(response.getFile(), response.getFileName()));
                     document.setCaption(response.getMessage());
                     execute(document);
-                } else {
+                } else{
                     execute(message);
                 }
             }
-
 
         } catch (Exception e) {
             try {
@@ -84,35 +80,6 @@ public class TelegramBot extends TelegramLongPollingBot {
                 ex.printStackTrace();
             }
         }
-    }
-
-    /**
-     * Конвертирует текст кнопок в команды бота
-     */
-    private String convertButton(String button) {
-        return switch (button) {
-            case "\u2795 Добавить задачу" -> "/add";
-            case "\uD83D\uDCDD Показать список задач" -> "/tasks";
-            case "\u2705 Список выполненных задач" -> "/dTask";
-            case "\u2718 Удалить" -> "/delete";
-            case "\u2714 Выполнено" -> "/done";
-            case "Экспорт" -> "/export";
-            case "Импорт" -> "/import";
-            case "Помощь" -> "/help";
-            case "\uD83D\uDCDD Регистрация" -> "/registration";
-            case "Войти в аккаунт" -> "/login";
-            case "Выйти из аккаунта" -> "/exit";
-            case "Расширить задачу" -> "/expand";
-
-            case "\u2795 Добавить подзадачу" -> "/add_subtask";
-            case "\u2718 Удалить подзадачу" -> "/delete_subtask";
-            case "Изменить подзадачу" -> "/edit_subtask";
-            case "Окончить расширение" -> "/finish_expand";
-            case "GPT добавление подзадач" -> "/add_subtasks_with_gpt";
-            case "Сохранить" -> "/save_subtasks_from_gpt";
-            case "Удалить" -> "/delete_subtasks_from_gpt";
-            default -> button;
-        };
     }
 
     /**

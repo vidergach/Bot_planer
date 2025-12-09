@@ -11,7 +11,10 @@ public class AuthService {
     private final DatabaseService databaseService;
     private final Map<String, AuthState> authStates = new ConcurrentHashMap<>();
 
-    private final String WELCOME_MESSAGE = """
+    /**
+     * Сообщение приветствия для неавторизованных пользователей.
+     */
+    public final String WELCOME_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
 
             Для начала работы необходимо авторизоваться:
@@ -22,7 +25,10 @@ public class AuthService {
             После авторизации вы сможете использовать все функции планировщика!
             """;
 
-    private final String START_MESSAGE = """
+    /**
+     * Стартовое сообщение для авторизованных пользователей.
+     */
+    public final String START_MESSAGE = """
             Добро пожаловать в планировщик задач! \uD83D\uDC31 📝
             Я могу организовывать ваши задачи.
             Можете воспользоваться кнопками для удобства)
@@ -33,25 +39,11 @@ public class AuthService {
             /done - отметить выполненной
             /dTask - список выполненных задач
             /delete - удалить задачу
-            /expand - расширить задачу
             /export - предоставить список задач пользователя в файле
             /import - загрузить список задач из файла
             /exit - выйти из аккаунта
             /help - помощь
-            
-            Команды для подзадач:
-            /add_subtask - добавить подзадачу
-            /delete_subtask - удалить подзадачу
-            /edit_subtask - изменить подзадачу
-            /finish_subtask - окончить расширение задачи
             """;
-
-    /**
-     * Конструктор сервиса аутентификации.
-     */
-    public AuthService(DatabaseService databaseService) {
-        this.databaseService = databaseService;
-    }
 
     /**
      * Внутренний класс для отслеживания состояния аутентификации пользователя.
@@ -70,46 +62,133 @@ public class AuthService {
     }
 
     /**
-     * Начинает процесс регистрации пользователя.
+     * Конструктор сервиса аутентификации.
+    */
+    public AuthService(DatabaseService databaseService) {
+        this.databaseService = databaseService;
+    }
+
+    /**
+     * Проверяет, находится ли пользователь в процессе аутентификации.
+     */
+    public boolean hasAuthState(String userId) {
+        return authStates.containsKey(userId);
+    }
+
+    /**
+     * Обрабатывает следующий шаг процесса аутентификации.
+     *
+     * @param userId идентификатор пользователя
+     * @param userInput ввод пользователя
+     * @return ответ бота
+     */
+    public BotResponse handleAuthStep(String userId, String userInput) {
+        AuthState state = authStates.get(userId);
+
+        if ("username".equals(state.step)) {
+            return processUsernameStep(state, userInput, userId);
+        } else if ("password".equals(state.step)) {
+            return processPasswordStep(state, userInput, userId);
+        }
+
+        authStates.remove(userId);
+        return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
+    }
+
+    /**
+     * Проверяет аутентифицирован ли пользователь.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return true если пользователь аутентифицирован, false в противном случае
+     */
+    public boolean isUserAuthenticated(String userId, String platformType) {
+        try {
+            return databaseService.getUsername(platformType, userId) != null;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Начинает процесс регистрации нового пользователя.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с запросом логина для регистрации
      */
     public BotResponse handleRegistration(String userId, String platformType) {
         authStates.put(userId, new AuthState("registration", platformType));
         return new BotResponse("""
-        📝 Регистрация нового пользователя
-        Введите логин:""");
+                📝 Регистрация нового пользователя
+                Введите логин:
+                """);
     }
 
     /**
-     * Начинает процесс входа пользователя.
+     * Начинает процесс входа в аккаунт.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с запросом логина для входа
      */
     public BotResponse handleLogin(String userId, String platformType) {
         authStates.put(userId, new AuthState("integration", platformType));
         return new BotResponse("""
-        🔑 Вход в аккаунт
-        Введите логин:""");
+                🔑 Вход в аккаунт
+                Введите логин:
+                """);
     }
 
     /**
-     * Обрабатывает шаг аутентификации.
+     * Обрабатывает выход пользователя из аккаунта.
+     *
+     * @param userId идентификатор пользователя
+     * @param platformType тип платформы
+     * @return ответ бота с результатом операции выхода
      */
-    public BotResponse handleAuthStep(String userId, String userInput) {
-        AuthState state = authStates.get(userId);
-        if (state == null) {
-            return new BotResponse("Ошибка аутентификации. Попробуйте снова.");
-        }
-
-        return switch (state.step) {
-            case "username" -> processUsernameStep(state, userInput, userId);
-            case "password" -> processPasswordStep(state, userInput, userId);
-            default -> {
-                authStates.remove(userId);
-                yield new BotResponse("Ошибка аутентификации. Попробуйте снова.");
+    public BotResponse handleExit(String userId, String platformType) {
+        try {
+            if (isUserAuthenticated(userId, platformType)) {
+                if (databaseService.logoutUser(userId, platformType)) {
+                    return new BotResponse("""
+                            ✅ Вы успешно вышли из аккаунта.
+                            
+                            Для продолжения работы:
+                            /registration - зарегистрироваться
+                            /login - войти в существующий аккаунт
+                            """);
+                }
             }
-        };
+            return new BotResponse("Вы не авторизованы.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return new BotResponse("Ошибка при выходе из аккаунта: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Возвращает сообщение приветствия.
+     */
+    public String getWelcomeMessage() {
+        return WELCOME_MESSAGE;
+    }
+
+    /**
+     * Возвращает стартовое сообщение.
+     */
+    public String getStartMessage() {
+        return START_MESSAGE;
     }
 
     /**
      * Обрабатывает шаг ввода логина при аутентификации.
+     *
+     * @param state состояние
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота
      */
     private BotResponse processUsernameStep(AuthState state, String userInput, String userId) {
         if (userInput.trim().isEmpty()) {
@@ -120,29 +199,39 @@ public class AuthService {
         }
         String username = userInput.trim();
         try {
-            if ("registration".equals(state.type) && databaseService.userExists(username)) {
-                authStates.remove(userId);
-                return new BotResponse("""
-                        Пользователь с таким логином уже существует.
-                        Используйте другой логин или войдите с помощью /integration.""");
-            } else if ("integration".equals(state.type) && !databaseService.userExists(username)) {
-                authStates.remove(userId);
-                return new BotResponse("""
-                        Пользователь '%s' не найден.
-                        Проверьте логин или зарегистрируйтесь с помощью /registration.
-                        """.formatted(username));
+            if ("registration".equals(state.type)) {
+                if (databaseService.userExists(username)) {
+                    authStates.remove(userId);
+                    return new BotResponse("""
+                            Пользователь с таким логином уже существует.
+                            Используйте другой логин или войдите с помощью /integration.""");
+                }
+            } else if ("integration".equals(state.type)) {
+                if (!databaseService.userExists(username)) {
+                    authStates.remove(userId);
+                    return new BotResponse("""
+                            Пользователь '%s' не найден.
+                            Проверьте логин или зарегистрируйтесь с помощью /registration.
+                            """.formatted(username));
+                }
             }
-
             state.username = username;
             state.step = "password";
             return new BotResponse("✅Отлично! Теперь введите пароль:");
         } catch (SQLException e) {
-            throw new RuntimeException("Ошибка проверки пользователя: " + e.getMessage());
+            e.printStackTrace();
+            authStates.remove(userId);
+            return new BotResponse("Ошибка проверки пользователя: " + e.getMessage());
         }
     }
 
     /**
      * Обрабатывает шаг ввода пароля при аутентификации.
+     *
+     * @param state состояние
+     * @param userInput ввод пользователя
+     * @param userId идентификатор пользователя
+     * @return ответ бота
      */
     private BotResponse processPasswordStep(AuthState state, String userInput, String userId) {
         String password = userInput.trim();
@@ -152,7 +241,6 @@ public class AuthService {
                 Введите пароль:
                 """);
         }
-
         try {
             if ("registration".equals(state.type)) {
                 if (databaseService.registerUser(state.username, password)) {
@@ -182,53 +270,9 @@ public class AuthService {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка при авторизации: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Проверяет, находится ли пользователь в процессе аутентификации.
-     */
-    public boolean isUserInAuthProcess(String userId) {
-        return authStates.containsKey(userId);
-    }
-
-    /**
-     * Обрабатывает выход пользователя из аккаунта.
-     */
-    public BotResponse handleExit(String userId, String platformType) {
-        try {
-            if (isUserAuthenticated(userId, platformType) && databaseService.logoutUser(userId, platformType)) {
-                return new BotResponse("""
-                        ✅ Вы успешно вышли из аккаунта.
-                       
-                        Для продолжения работы:
-                        /registration - зарегистрироваться
-                        /login - войти в существующий аккаунт
-                        """);
-            }
-            return new BotResponse("Вы не авторизованы.");
-        } catch (SQLException e) {
             e.printStackTrace();
-            throw new RuntimeException("Ошибка при выходе из аккаунта: " + e.getMessage());
+            authStates.remove(userId);
+            return new BotResponse("Ошибка при авторизации: " + e.getMessage());
         }
-    }
-
-    /**
-     * Проверяет, аутентифицирован ли пользователь.
-     */
-    public boolean isUserAuthenticated(String userId, String platformType) {
-        try {
-            return databaseService.getUsername(platformType, userId) != null;
-        } catch (SQLException e) {
-            throw new RuntimeException("Ошибка проверки авторизации: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Возвращает сообщение для неавторизованных пользователей.
-     */
-    public String getWelcomeMessage() {
-        return WELCOME_MESSAGE;
     }
 }

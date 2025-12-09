@@ -5,12 +5,13 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 /**
- * Класс для запуска Discord и Telegram, работать они будут параллельно.
+ * Главный класс приложения для запуска Telegram и Discord ботов.
+ * Инициализирует и запускает обоих ботов параллельно.
  */
 public class BotApplication {
     /**
      * Основной метод приложения, запускающий Telegram и Discord ботов.
-     * Инициализирует ботов с использованием параметров из переменных окружения.
+     * Инициализирует ботов с использованием параметров из переменных окружения
      *
      */
     public static void main(String[] args) {
